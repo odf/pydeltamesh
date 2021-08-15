@@ -6,6 +6,7 @@ def loadmesh(fp):
     normals = []
     texverts = []
     faces = []
+    materials = {}
 
     obj = '_default'
     group = '_default'
@@ -23,7 +24,9 @@ def loadmesh(fp):
         pars = fields[1:]
 
         if cmd == 'mtllib':
-            pass # TODO read and store material definitions from file
+            # TODO if path is relative, start at .obj file path
+            with open(pars[0]) as f:
+                loadmaterials(f, materials)
         elif cmd == 'v':
             vertices.append([float(pars[0]), float(pars[1]), float(pars[2])])
         elif cmd == 'vt':
@@ -63,8 +66,27 @@ def loadmesh(fp):
         'vertices': np.array(vertices),
         'normals': np.array(normals),
         'texverts': np.array(texverts),
-        'faces': faces
+        'faces': faces,
+        'materials': materials
     }
+
+
+def loadmaterials(fp, target):
+    material = '_default'
+
+    for rawline in fp.readlines():
+        line = rawline.strip()
+
+        if len(line) == 0 or line[0] == '#':
+            continue
+
+        fields = line.split()
+
+        if fields[0] == 'newmtl':
+            material = fields[1]
+            target.setdefault(material, [])
+        else:
+            target[material].append(line)
 
 
 if __name__ == '__main__':
