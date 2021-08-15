@@ -89,9 +89,35 @@ def loadmaterials(fp, target):
             target[material].append(line)
 
 
+def convertfaces(faces):
+    faceverts = [f['vertices'] for f in faces]
+    sizes = []
+    edges = {}
+
+    for i in range(len(faceverts)):
+        f = faceverts[i]
+        n = len(f)
+        sizes.append(n)
+
+        for j in range(n):
+            u, v = f[j], f[(j + 1) % n]
+
+            if edges.get((u, v)) is None:
+                edges[u, v] = (i, j)
+            else:
+                raise RuntimeError('duplicate directed edge %s -> %s' % (u, v))
+
+    boundarysize = len([
+        _ for u, v in edges.keys() if edges.get((v, u)) is None
+    ])
+
+    sop = np.array((len(edges) + boundarysize, 3), dtype=np.int32)
+
+
 if __name__ == '__main__':
     import sys
 
     with open(sys.argv[1]) as fp:
         mesh = loadmesh(fp)
         print(mesh)
+        convertfaces(mesh['faces'])
