@@ -91,13 +91,13 @@ def loadmaterials(fp, target):
 
 def convertfaces(faces):
     faceverts = [f['vertices'] for f in faces]
-    sizes = []
     edges = {}
+    offset = [0]
 
     for i in range(len(faceverts)):
         f = faceverts[i]
         n = len(f)
-        sizes.append(n)
+        offset.append(offset[-1] + n)
 
         for j in range(n):
             u, v = f[j], f[(j + 1) % n]
@@ -105,13 +105,52 @@ def convertfaces(faces):
             if edges.get((u, v)) is None:
                 edges[u, v] = (i, j)
             else:
-                raise RuntimeError('duplicate directed edge %s -> %s' % (u, v))
+                raise RuntimeError(
+                    'duplicate directed edge %s -> %s' % (u, v)
+                )
 
     boundarysize = len([
-        _ for u, v in edges.keys() if edges.get((v, u)) is None
+        None for u, v in edges.keys() if edges.get((v, u)) is None
     ])
 
-    sop = np.array((len(edges) + boundarysize, 3), dtype=np.int32)
+    nc = 2 * (len(edges) + boundarysize)
+
+    sop = np.full((3, nc), -1, dtype=np.int32)
+    ch2face = np.full(nc, -1, dtype=np.int32)
+    ch2index = np.full(nc, -1, dtype=np.int32)
+
+    for i in range(len(faceverts)):
+        f = faceverts[i]
+        n = len(f)
+
+        for j in range(n):
+            jnext = (j + 1) % n
+            k = 2 * (offset[i] + j)
+            knext = 2 * (offset[i] + jnext)
+
+            ch2face[k] = i
+            ch2face[k + 1] = i
+            ch2index[k] = j
+            ch2index[k + 1] = jnext
+
+            sop[0, k] = k + 1
+            sop[0, k + 1] = k
+            sop[1, k + 1] = knext
+            sop[1, knext] = k + 1
+
+            opp = edges.get((f[jnext], f[j]))
+
+            if opp is not None:
+                ix, jx = opp
+                kx = 2 * (offset[ix] + jx)
+                sop[2, k] = kx + 1
+                sop[2, k + 1] = kx
+
+    return {
+         'sigma': sop,
+         'chamberface': ch2face,
+         'chamberindex': ch2index
+    }
 
 
 if __name__ == '__main__':
@@ -120,4 +159,6 @@ if __name__ == '__main__':
     with open(sys.argv[1]) as fp:
         mesh = loadmesh(fp)
         print(mesh)
-        convertfaces(mesh['faces'])
+        chambers = convertfaces(mesh['faces'])
+        print(chambers)
+        # TODO fixboundary(chambers)
