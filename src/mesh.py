@@ -90,12 +90,11 @@ def loadmaterials(fp, target):
 
 
 def convertfaces(faces):
-    faceverts = [f['vertices'] for f in faces]
     edges = {}
     offset = [0]
 
-    for i in range(len(faceverts)):
-        f = faceverts[i]
+    for i in range(len(faces)):
+        f = faces[i]
         n = len(f)
         offset.append(offset[-1] + n)
 
@@ -109,18 +108,15 @@ def convertfaces(faces):
                     'duplicate directed edge %s -> %s' % (u, v)
                 )
 
-    boundarysize = len([
-        None for u, v in edges.keys() if edges.get((v, u)) is None
-    ])
-
-    nc = 2 * (len(edges) + boundarysize)
+    nc = 2 * len(edges)
 
     sop = np.full((3, nc), -1, dtype=np.int32)
     ch2face = np.full(nc, -1, dtype=np.int32)
     ch2index = np.full(nc, -1, dtype=np.int32)
+    onboundary = np.zeros(nc, dtype=np.int32)
 
-    for i in range(len(faceverts)):
-        f = faceverts[i]
+    for i in range(len(faces)):
+        f = faces[i]
         n = len(f)
 
         for j in range(n):
@@ -140,7 +136,9 @@ def convertfaces(faces):
 
             opp = edges.get((f[jnext], f[j]))
 
-            if opp is not None:
+            if opp is None:
+                onboundary[k] = onboundary[k + 1] = 1
+            else:
                 ix, jx = opp
                 kx = 2 * (offset[ix] + jx)
                 sop[2, k] = kx + 1
@@ -149,7 +147,8 @@ def convertfaces(faces):
     return {
          'sigma': sop,
          'chamberface': ch2face,
-         'chamberindex': ch2index
+         'chamberindex': ch2index,
+         'onboundary': onboundary
     }
 
 
@@ -157,8 +156,7 @@ if __name__ == '__main__':
     import sys
 
     with open(sys.argv[1]) as fp:
-        mesh = loadmesh(fp)
-        print(mesh)
-        chambers = convertfaces(mesh['faces'])
-        print(chambers)
-        # TODO fixboundary(chambers)
+        rawmesh = loadmesh(fp)
+        print(rawmesh)
+        rawchambers = convertfaces([f['vertices'] for f in rawmesh['faces']])
+        print(rawchambers)
