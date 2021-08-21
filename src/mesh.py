@@ -20,10 +20,10 @@ def loadrawmesh(fp):
     faces = []
     materials = {}
 
-    obj = '_default'
-    group = '_default'
-    material = '_default'
-    smoothinggroup = '_default'
+    obj = None
+    group = None
+    material = None
+    smoothinggroup = None
 
     for rawline in fp.readlines():
         line = rawline.strip()
@@ -84,7 +84,7 @@ def loadrawmesh(fp):
 
 
 def loadmaterials(fp, target):
-    material = '_default'
+    material = None
 
     for rawline in fp.readlines():
         line = rawline.strip()
@@ -116,7 +116,6 @@ class Mesh(object):
         self._facesmoothinggroups = [f['smoothinggroup'] for f in faces]
 
         rawchambers = makechambers([f['vertices'] for f in faces])
-        chamberface = rawchambers['chamberface']
         chamberindex = rawchambers['chamberindex']
 
         self._sigma = rawchambers['sigma']
@@ -124,9 +123,10 @@ class Mesh(object):
         self._chambervertex = np.full(nc, -1, dtype=np.int32)
         self._chambertexvert = np.full(nc, -1, dtype=np.int32)
         self._chambernormal = np.full(nc, -1, dtype=np.int32)
+        self._chamberface = rawchambers['chamberface']
 
         for i in range(self._nrchambers):
-            f = faces[chamberface[i]]
+            f = faces[self._chamberface[i]]
             k = chamberindex[i]
             self._chambervertex[i] = f['vertices'][k]
             self._chambertexvert[i] = f['texverts'][k]
@@ -158,6 +158,25 @@ class Mesh(object):
                 self._facesmoothinggroups[i]
             )
             parts.setdefault(key, []).append(i)
+
+        objp, grpp, matp, smgp = None, None, None, None
+
+        for obj, grp, mat, smg in sorted(parts):
+            if obj is not None and obj != objp:
+                fp.write('o %s\n' % obj)
+                objp = obj
+            if grp is not None and grp != grpp:
+                fp.write('g %s\n' % grp)
+                grpp = grp
+            if mat is not None and mat != matp:
+                fp.write('usemtl %s\n' % mat)
+                matp = mat
+            if smg is not None and smg != smgp:
+                fp.write('s %s\n' % smg)
+                smgp = smg
+
+            for i in parts[obj, grp, mat, smg]:
+                pass
 
 
 def makechambers(faces):
