@@ -124,9 +124,13 @@ class Mesh(object):
         self._chambertexvert = np.full(nc, -1, dtype=np.int32)
         self._chambernormal = np.full(nc, -1, dtype=np.int32)
         self._chamberface = rawchambers['chamberface']
+        self._facechamber = np.full(len(faces), -1, dtype=np.int32)
 
         for i in range(self._nrchambers):
-            f = faces[self._chamberface[i]]
+            j = self._chamberface[i]
+            if self._facechamber[j] < 0:
+                self._facechamber[j] = i
+            f = faces[j]
             k = chamberindex[i]
             self._chambervertex[i] = f['vertices'][k]
             self._chambertexvert[i] = f['texverts'][k]
@@ -176,7 +180,18 @@ class Mesh(object):
                 smgp = smg
 
             for i in parts[obj, grp, mat, smg]:
-                pass
+                ch0 = ch = self._facechamber[i]
+                out = ['f']
+                while True:
+                    out.append('%s/%s/%s' % (
+                        self._chambervertex[ch],
+                        self._chambertexvert[ch] or '',
+                        self._chambernormal[ch] or ''
+                    ))
+                    ch = self._sigma[1, self._sigma[0, ch]]
+                    if ch == ch0:
+                        break
+                fp.write('%s\n' % ' '.join(out))
 
 
 def makechambers(faces):
