@@ -132,6 +132,33 @@ class Mesh(object):
             self._chambertexvert[i] = f['texverts'][k]
             self._chambernormal[i] = f['normals'][k]
 
+    def write(self, fp, basename=None):
+        if basename is not None and len(self._materials) > 0:
+            with open('%s.mtl' % basename, 'w') as f:
+                for key in self._materials:
+                    f.write('newmtl %s\n' % key)
+                    f.write('\n'.join(self._materials[key]))
+                    f.write('\n')
+
+        for x, y, z in self._vertices:
+            fp.write('v %.8f %.8f %.8f\n' % (x, y, z))
+        for x, y, z in self._normals:
+            fp.write('vn %.8f %.8f %.8f\n' % (x, y, z))
+        for x, y in self._texverts:
+            fp.write('vt %.8f %.8f\n' % (x, y))
+        for key in sorted(self._materials):
+            fp.write('usemtl %s\n' % key)
+
+        parts = {}
+        for i in range(len(self._faceobjects)):
+            key = (
+                self._faceobjects[i],
+                self._facegroups[i],
+                self._facematerials[i],
+                self._facesmoothinggroups[i]
+            )
+            parts.setdefault(key, []).append(i)
+
 
 def makechambers(faces):
     edges = {}
@@ -198,7 +225,10 @@ if __name__ == '__main__':
     with open(sys.argv[1]) as fp:
         mesh = loadmesh(fp)
 
-        for key in mesh.__dict__:
-            print(key)
-            print(mesh.__dict__[key])
-            print()
+    for key in mesh.__dict__:
+        print(key)
+        print(mesh.__dict__[key])
+        print()
+
+    with open('x.obj', 'w') as fp:
+        mesh.write(fp, 'x')
