@@ -2,6 +2,18 @@ import numpy as np
 
 
 def loadmesh(fp):
+    rawmesh = loadrawmesh(fp)
+
+    return Mesh(
+        rawmesh['vertices'],
+        rawmesh['faces'],
+        rawmesh['normals'],
+        rawmesh['texverts'],
+        rawmesh['materials']
+    )
+
+
+def loadrawmesh(fp):
     vertices = []
     normals = []
     texverts = []
@@ -89,7 +101,39 @@ def loadmaterials(fp, target):
             target[material].append(line)
 
 
-def convertfaces(faces):
+class Mesh(object):
+    def __init__(
+        self, vertices, faces, normals=None, texverts=None, materials=None
+    ):
+        self._vertices = vertices
+        self._normals = normals
+        self._texverts = texverts
+        self._materials = materials
+
+        self._faceobjects = [f['object'] for f in faces]
+        self._facegroups = [f['group'] for f in faces]
+        self._facematerials = [f['material'] for f in faces]
+        self._facesmoothinggroups = [f['smoothinggroup'] for f in faces]
+
+        rawchambers = makechambers([f['vertices'] for f in faces])
+        chamberface = rawchambers['chamberface']
+        chamberindex = rawchambers['chamberindex']
+
+        self._sigma = rawchambers['sigma']
+        self._nrchambers = nc = self._sigma.shape[1]
+        self._chambervertex = np.full(nc, -1, dtype=np.int32)
+        self._chambertexvert = np.full(nc, -1, dtype=np.int32)
+        self._chambernormal = np.full(nc, -1, dtype=np.int32)
+
+        for i in range(self._nrchambers):
+            f = faces[chamberface[i]]
+            k = chamberindex[i]
+            self._chambervertex[i] = f['vertices'][k]
+            self._chambertexvert[i] = f['texverts'][k]
+            self._chambernormal[i] = f['normals'][k]
+
+
+def makechambers(faces):
     edges = {}
     offset = [0]
 
@@ -113,7 +157,6 @@ def convertfaces(faces):
     sop = np.full((3, nc), -1, dtype=np.int32)
     ch2face = np.full(nc, -1, dtype=np.int32)
     ch2index = np.full(nc, -1, dtype=np.int32)
-    onboundary = np.zeros(nc, dtype=np.int32)
 
     for i in range(len(faces)):
         f = faces[i]
@@ -136,9 +179,7 @@ def convertfaces(faces):
 
             opp = edges.get((f[jnext], f[j]))
 
-            if opp is None:
-                onboundary[k] = onboundary[k + 1] = 1
-            else:
+            if opp is not None:
                 ix, jx = opp
                 kx = 2 * (offset[ix] + jx)
                 sop[2, k] = kx + 1
@@ -147,8 +188,7 @@ def convertfaces(faces):
     return {
          'sigma': sop,
          'chamberface': ch2face,
-         'chamberindex': ch2index,
-         'onboundary': onboundary
+         'chamberindex': ch2index
     }
 
 
@@ -156,7 +196,9 @@ if __name__ == '__main__':
     import sys
 
     with open(sys.argv[1]) as fp:
-        rawmesh = loadmesh(fp)
-        print(rawmesh)
-        rawchambers = convertfaces([f['vertices'] for f in rawmesh['faces']])
-        print(rawchambers)
+        mesh = loadmesh(fp)
+
+        for key in mesh.__dict__:
+            print(key)
+            print(mesh.__dict__[key])
+            print()
