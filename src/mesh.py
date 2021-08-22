@@ -253,9 +253,144 @@ def makechambers(faces):
     }
 
 
+from typing import TypeVar, Generic, Callable, Union
+
+T = TypeVar('T')
+Vertex = TypeVar('Vertex')
+OrientedEdge = tuple[int, int]
+
+
+class Mesh(Generic[Vertex]):
+    def __init__(
+        self,
+        vertices: list[Vertex],
+        atVertex: list[OrientedEdge],
+        alongFace: list[OrientedEdge],
+        alongBoundaryComponent: list[OrientedEdge],
+        toFace: dict[OrientedEdge, int],
+        toBoundaryComponent: dict[OrientedEdge, int],
+        nextEdge: dict[OrientedEdge, OrientedEdge]
+    ):
+        self.vertices = vertices
+        self.atVertex = atVertex
+        self.alongFace = alongFace
+        self.alongBoundaryComponent = alongBoundaryComponent
+        self.toFace = toFace
+        self.toBoundaryComponent = toBoundaryComponent
+        self.next = nextEdge
+
+
+def opposite(e: OrientedEdge) -> OrientedEdge:
+    return (e[1], e[0])
+
+
+def fromOrientedFacesUnchecked(
+    vertexData: list[Vertex],
+    faceLists: list[list[int]]
+) -> Mesh[Vertex]:
+    orientedEdgeLists = [cyclicPairs(face) for face in faceLists]
+    orientedEdges = concat(orientedEdgeLists)
+    orientedEdgeSet = set(orientedEdges)
+
+    boundaryEdges = [
+        e for e in orientedEdges if opposite(e) not in orientedEdgeSet
+    ]
+
+    verticesAtBoundary = [e[0] for e in boundaryEdges]
+    nextOnBoundary = dict(opposite(e) for e in boundaryEdges)
+
+    boundaryLists = [
+        cyclicPairs(canonicalCircular(c))
+        for c in extractCycles(verticesAtBoundary, nextOnBoundary.get)
+    ]
+
+    atVertex = sorted(dict((s, (s, t)) for (s, t) in orientedEdges).values())
+
+    toFace = dict(
+        (e, i) for i in range(len(faceLists)) for e in orientedEdgeLists[i]
+    )
+    alongFace = sorted(dict((toFace[e], e) for e in toFace).values())
+
+    toBoundaryComponent = dict(
+        (e, i) for i in range(len(boundaryLists)) for e in boundaryLists[i]
+    )
+    alongBoundaryComponent = sorted(dict(
+        (toBoundaryComponent[e], e) for e in toBoundaryComponent
+    ).values())
+
+    nextEdge = dict(
+        e
+        for cycles in [orientedEdgeLists, boundaryLists]
+        for cycle in cycles
+        for e in cyclicPairs(cycle)
+    )
+
+    return Mesh(
+        vertexData,
+        atVertex,
+        alongFace,
+        alongBoundaryComponent,
+        toFace,
+        toBoundaryComponent,
+        nextEdge
+    )
+
+
+def extractCycles(
+    items: list[T],
+    advance: Callable[[T], Union[T, None]]
+) -> list[list[T]]:
+
+    cycles: list[list[T]] = []
+    seen: set[T] = set()
+
+    for item in items:
+        if item not in seen:
+            cycle = traceCycle(item, advance)
+            cycles.append(cycle)
+            seen.update(cycle)
+
+    return cycles
+
+
+def traceCycle(start: T, advance: Callable[[T], Union[T, None]]) -> list[T]:
+    result: list[T] = []
+    current = start
+
+    while True:
+        next = advance(current)
+        if next is None:
+            return result
+        else:
+            result.append(current)
+            current = next
+            if next == start:
+                return result
+
+
+def cyclicPairs(indices: list[T]) -> list[tuple[T, T]]:
+    return list(zip(indices, indices[1:] + indices[:1]))
+
+
+def canonicalCircular(items: list[T]) -> list[T]:
+    best = items
+
+    for i in range(1, len(items)):
+        tmp = items[i:] + items[:i]
+        if tmp < best:
+            best = tmp
+
+    return best
+
+
+def concat(lists: list[list[T]]) -> list[T]:
+    return [x for xs in lists for x in xs]
+
+
 if __name__ == '__main__':
     import sys
 
+    '''
     with open(sys.argv[1]) as fp:
         mesh = loadchambermesh(fp)
 
@@ -266,3 +401,17 @@ if __name__ == '__main__':
 
     with open('x.obj', 'w') as fp:
         mesh.write(fp, 'x')
+    '''
+
+    with open(sys.argv[1]) as fp:
+        rawmesh = loadrawmesh(fp)
+
+    mesh = fromOrientedFacesUnchecked(
+        rawmesh['vertices'],
+        [f['vertices'] for f in rawmesh['faces']]
+    )
+
+    for key in mesh.__dict__:
+        print(key)
+        print(mesh.__dict__[key])
+        print()
