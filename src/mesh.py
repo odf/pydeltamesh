@@ -1,18 +1,6 @@
 import numpy as np
 
 
-def loadmesh(fp):
-    rawmesh = loadrawmesh(fp)
-
-    return Mesh(
-        rawmesh['vertices'],
-        rawmesh['faces'],
-        rawmesh['normals'],
-        rawmesh['texverts'],
-        rawmesh['materials']
-    )
-
-
 def loadrawmesh(fp):
     vertices = []
     normals = []
@@ -101,7 +89,19 @@ def loadmaterials(fp, target):
             target[material].append(line)
 
 
-class Mesh(object):
+def loadchambermesh(fp):
+    rawmesh = loadrawmesh(fp)
+
+    return ChamberMesh(
+        rawmesh['vertices'],
+        rawmesh['faces'],
+        rawmesh['normals'],
+        rawmesh['texverts'],
+        rawmesh['materials']
+    )
+
+
+class ChamberMesh(object):
     def __init__(
         self, vertices, faces, normals=None, texverts=None, materials=None
     ):
@@ -257,7 +257,7 @@ if __name__ == '__main__':
     import sys
 
     with open(sys.argv[1]) as fp:
-        mesh = loadmesh(fp)
+        mesh = loadchambermesh(fp)
 
     for key in mesh.__dict__:
         print(key)
