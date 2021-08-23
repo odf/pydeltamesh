@@ -1,6 +1,8 @@
 import numpy as np
 
 
+# -- Code for reading an .obj file
+
 def loadrawmesh(fp):
     vertices = []
     normals = []
@@ -88,6 +90,8 @@ def loadmaterials(fp, target):
         else:
             target[material].append(line)
 
+
+# -- Chamber based mesh implementation
 
 def loadchambermesh(fp):
     rawmesh = loadrawmesh(fp)
@@ -253,6 +257,8 @@ def makechambers(faces):
     }
 
 
+# -- Half-edge based mesh implementation
+
 from typing import TypeVar, Generic, Callable, Union
 
 T = TypeVar('T')
@@ -354,6 +360,8 @@ def fromOrientedFaces(
     )
 
 
+# -- Various helper functions, mostly for lists
+
 def extractCycles(
     items: list[T],
     advance: Callable[[T], Union[T, None]]
@@ -409,6 +417,8 @@ def hasDuplicates(items):
 def concat(lists: list[list[T]]) -> list[T]:
     return [x for xs in lists for x in xs]
 
+
+# -- Test script
 
 if __name__ == '__main__':
     import sys
