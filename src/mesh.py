@@ -284,17 +284,35 @@ def opposite(e: OrientedEdge) -> OrientedEdge:
     return (e[1], e[0])
 
 
-def fromOrientedFacesUnchecked(
+def fromOrientedFaces(
     vertexData: list[Vertex],
     faceLists: list[list[int]]
 ) -> Mesh[Vertex]:
+    definedVertexSet = set(range(1, len(vertexData) + 1))
+    referencedVertexSet = set(concat(faceLists))
+
+    if not definedVertexSet.issuperset(referencedVertexSet):
+        raise ValueError('an undefined vertex appears in a face')
+    elif not referencedVertexSet.issuperset(definedVertexSet):
+        raise ValueError('one of the vertices does not appear in any face')
+    elif any(len(f) < 2 for f in faceLists):
+        raise ValueError('there is a face with fewer than 2 vertices')
+    elif any(hasDuplicates(f) for f in faceLists):
+        raise ValueError('a vertex appears more than once in the same face')
+
     orientedEdgeLists = [cyclicPairs(face) for face in faceLists]
     orientedEdges = concat(orientedEdgeLists)
     orientedEdgeSet = set(orientedEdges)
 
+    if len(orientedEdgeSet) < len(orientedEdges):
+        raise ValueError('an oriented edge appears more than once')
+
     boundaryEdges = [
         e for e in orientedEdges if opposite(e) not in orientedEdgeSet
     ]
+
+    if hasDuplicates([a for a, b in boundaryEdges]):
+        raise ValueError('a vertex appears more than once in a boundary')
 
     verticesAtBoundary = [e[0] for e in boundaryEdges]
     nextOnBoundary = dict(opposite(e) for e in boundaryEdges)
@@ -383,6 +401,11 @@ def canonicalCircular(items: list[T]) -> list[T]:
     return best
 
 
+def hasDuplicates(items):
+    tmp = sorted(items)
+    return any(a == b for a, b in zip(tmp, tmp[1:]))
+
+
 def concat(lists: list[list[T]]) -> list[T]:
     return [x for xs in lists for x in xs]
 
@@ -390,23 +413,10 @@ def concat(lists: list[list[T]]) -> list[T]:
 if __name__ == '__main__':
     import sys
 
-    '''
-    with open(sys.argv[1]) as fp:
-        mesh = loadchambermesh(fp)
-
-    for key in mesh.__dict__:
-        print(key)
-        print(mesh.__dict__[key])
-        print()
-
-    with open('x.obj', 'w') as fp:
-        mesh.write(fp, 'x')
-    '''
-
     with open(sys.argv[1]) as fp:
         rawmesh = loadrawmesh(fp)
 
-    mesh = fromOrientedFacesUnchecked(
+    mesh = fromOrientedFaces(
         rawmesh['vertices'],
         [f['vertices'] for f in rawmesh['faces']]
     )
