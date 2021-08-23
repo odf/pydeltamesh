@@ -277,13 +277,33 @@ class Mesh(Generic[Vertex]):
         toBoundaryComponent: dict[OrientedEdge, int],
         nextEdge: dict[OrientedEdge, OrientedEdge]
     ):
-        self.vertices = vertices
-        self.atVertex = atVertex
-        self.alongFace = alongFace
-        self.alongBoundaryComponent = alongBoundaryComponent
-        self.toFace = toFace
-        self.toBoundaryComponent = toBoundaryComponent
-        self.next = nextEdge
+        self._vertices = vertices
+        self._atVertex = atVertex
+        self._alongFace = alongFace
+        self._alongBoundaryComponent = alongBoundaryComponent
+        self._toFace = toFace
+        self._toBoundaryComponent = toBoundaryComponent
+        self._next = nextEdge
+
+    @property
+    def vertices(self) -> list[Vertex]:
+        return self._vertices[:]
+
+    def vertex(self, index: int) -> Union[Vertex, None]:
+        if 1 <= index <= len(self._vertices):
+            return self._vertices[index - 1]
+        else:
+            return None
+
+    def verticesInFace(self, e0: OrientedEdge) -> list[int]:
+        return [e[0] for e in traceCycle(e0, self._next.get)]
+
+    @property
+    def faceIndices(self) -> list[list[int]]:
+        return [
+            canonicalCircular(self.verticesInFace(e))
+            for e in self._alongFace
+        ]
 
 
 def opposite(e: OrientedEdge) -> OrientedEdge:
@@ -435,3 +455,7 @@ if __name__ == '__main__':
         print(key)
         print(mesh.__dict__[key])
         print()
+
+    print('Face indices:')
+    print(mesh.faceIndices)
+    print()
