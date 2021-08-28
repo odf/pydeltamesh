@@ -426,6 +426,17 @@ def fromOrientedFaces(
     )
 
 
+def triangulate(mesh: Mesh[Vertex]) -> Mesh[Vertex]:
+    return fromOrientedFaces(
+        mesh.vertices,
+        [
+            [a, b, c]
+            for f in mesh.faceIndices()
+            for (a, b, c) in triangulateCycle(f)
+        ]
+    )
+
+
 # -- Various helper functions, mostly for lists
 
 def extractCycles(
@@ -458,6 +469,16 @@ def traceCycle(start: T, advance: Callable[[T], Union[T, None]]) -> list[T]:
             current = next
             if next == start:
                 return result
+
+
+def triangulateCycle(corners: list[T]) -> list[tuple[T, T, T]]:
+    if len(corners) < 3:
+        return []
+    else:
+        return [
+            (corners[0], corners[i], corners[i + 1])
+            for i in range(1, len(corners) - 1)
+        ]
 
 
 def cyclicPairs(indices: list[T]) -> list[tuple[T, T]]:
@@ -497,15 +518,17 @@ if __name__ == '__main__':
         [f['vertices'] for f in rawmesh['faces']]
     )
 
-    for key in mesh.__dict__:
+    trimesh = triangulate(mesh)
+
+    for key in trimesh.__dict__:
         print(key)
-        print(mesh.__dict__[key])
+        print(trimesh.__dict__[key])
         print()
 
-    print('Neighbor indices:')
-    print(mesh.neighborIndices())
+    print('Face indices:')
+    print(trimesh.faceIndices())
     print()
 
-    print('Neighbor vertices:')
-    print(mesh.neighborVertices())
+    print('Neighbor indices:')
+    print(trimesh.neighborIndices())
     print()
