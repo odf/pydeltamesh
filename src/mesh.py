@@ -286,11 +286,15 @@ class Mesh(Generic[Vertex]):
         self._next = nextEdge
 
     @property
+    def nrVertices(self) -> int:
+        return len(self._vertices)
+
+    @property
     def vertices(self) -> list[Vertex]:
         return self._vertices[:]
 
     def vertex(self, index: int) -> Union[Vertex, None]:
-        if 1 <= index <= len(self._vertices):
+        if 1 <= index <= self.nrVertices:
             return self._vertices[index - 1]
         else:
             return None
@@ -437,6 +441,20 @@ def triangulate(mesh: Mesh[Vertex]) -> Mesh[Vertex]:
     )
 
 
+def combine(meshes: list[Mesh[Vertex]]) -> Mesh[Vertex]:
+    vertices = concat([m.vertices for m in meshes])
+
+    faces: list[list[int]] = []
+    offset = 0
+
+    for m in meshes:
+        for f in m.faceIndices():
+            faces.append([i + offset for i in f])
+        offset += m.nrVertices
+
+    return fromOrientedFaces(vertices, faces)
+
+
 # -- Various helper functions, mostly for lists
 
 def extractCycles(
@@ -503,22 +521,22 @@ if __name__ == '__main__':
     with open(sys.argv[1]) as fp:
         rawmesh = loadrawmesh(fp)
 
-    mesh = fromOrientedFaces(
+    original = fromOrientedFaces(
         rawmesh['vertices'],
         [f['vertices'] for f in rawmesh['faces']]
     )
 
-    trimesh = triangulate(mesh)
+    mesh = combine([original, original])
 
-    for key in trimesh.__dict__:
+    for key in mesh.__dict__:
         print(key)
-        print(trimesh.__dict__[key])
+        print(mesh.__dict__[key])
         print()
 
     print('Face indices:')
-    print(trimesh.faceIndices())
+    print(mesh.faceIndices())
     print()
 
     print('Neighbor indices:')
-    print(trimesh.neighborIndices())
+    print(mesh.neighborIndices())
     print()
