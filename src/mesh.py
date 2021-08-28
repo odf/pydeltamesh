@@ -455,6 +455,45 @@ def combine(meshes: list[Mesh[Vertex]]) -> Mesh[Vertex]:
     return fromOrientedFaces(vertices, faces)
 
 
+def subdivide(
+    mesh: Mesh[Vertex], composeFn: Callable[[list[Vertex]], Vertex]
+) -> Mesh[Vertex]:
+    allEdges = mesh.edgeIndices()
+    nrVerts = mesh.nrVertices
+    nrEdges = len(allEdges)
+
+    midPointIndex = {}
+    for i in range(nrEdges):
+        (u, v) = allEdges[i]
+        midPointIndex[u, v] = midPointIndex[v, u] = i + nrVerts + 1
+
+    sourceLists = (
+        [[mesh._vertices[i]] for i in range(nrVerts)] +
+        [
+            [mesh._vertices[u - 1], mesh._vertices[v - 1]]
+            for (u, v) in allEdges
+        ] +
+        mesh.faceVertices()
+    )
+
+    vertsOut = [composeFn(vs) for vs in sourceLists]
+
+    subFace = lambda u, v: [
+        v,
+        midPointIndex[v, mesh._next[u, v][1]],
+        mesh._toFace[u, v] + nrVerts + nrEdges + 1,
+        midPointIndex[u, v]
+    ]
+
+    facesOut = [
+        subFace(u, v)
+        for (u, v) in mesh._next
+        if mesh._toFace.get((u, v)) is not None
+    ]
+
+    return fromOrientedFaces(vertsOut, facesOut)
+
+
 # -- Various helper functions, mostly for lists
 
 def extractCycles(
@@ -526,7 +565,7 @@ if __name__ == '__main__':
         [f['vertices'] for f in rawmesh['faces']]
     )
 
-    mesh = combine([original, original])
+    mesh = subdivide(original, lambda vs: np.average(vs, axis=0))
 
     for key in mesh.__dict__:
         print(key)
