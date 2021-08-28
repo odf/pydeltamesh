@@ -323,12 +323,32 @@ class Mesh(Generic[Vertex]):
         ]
 
     def edgeIndices(self) -> list[OrientedEdge]:
-        return [(s, t) for (s, t) in self._next.keys() if s < t]
+        return [(s, t) for (s, t) in self._next if s < t]
 
     def edgeVertices(self) -> list[tuple[Vertex, Vertex]]:
         return [
             (self._vertices[s - 1], self._vertices[t - 1])
             for (s, t) in self.edgeIndices()
+        ]
+
+    def _nextAroundVertex(self, e: OrientedEdge) -> OrientedEdge:
+        return self._next[opposite(e)]
+
+    def vertexNeighbors(self, e: OrientedEdge) -> list[int]:
+        return [
+            t for (s, t) in traceCycle(e, self._nextAroundVertex)
+        ][::-1]
+
+    def neighborIndices(self) -> list[list[int]]:
+        return [
+            canonicalCircular(self.vertexNeighbors(e))
+            for e in self._atVertex
+        ]
+
+    def neighborVertices(self) -> list[list[Vertex]]:
+        return [
+            [ self._vertices[i - 1] for i in idcs ]
+            for idcs in self.neighborIndices()
         ]
 
 
@@ -482,10 +502,10 @@ if __name__ == '__main__':
         print(mesh.__dict__[key])
         print()
 
-    print('Edge indices:')
-    print(mesh.edgeIndices())
+    print('Neighbor indices:')
+    print(mesh.neighborIndices())
     print()
 
-    print('Edge vertices:')
-    print(mesh.edgeVertices())
+    print('Neighbor vertices:')
+    print(mesh.neighborVertices())
     print()
