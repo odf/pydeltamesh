@@ -298,11 +298,37 @@ class Mesh(Generic[Vertex]):
     def verticesInFace(self, e0: OrientedEdge) -> list[int]:
         return [e[0] for e in traceCycle(e0, self._next.get)]
 
-    @property
     def faceIndices(self) -> list[list[int]]:
         return [
             canonicalCircular(self.verticesInFace(e))
             for e in self._alongFace
+        ]
+
+    def faceVertices(self) -> list[list[Vertex]]:
+        return [
+            [ self._vertices[i - 1] for i in idcs ]
+            for idcs in self.faceIndices()
+        ]
+
+    def boundaryIndices(self) -> list[list[int]]:
+        return [
+            canonicalCircular(self.verticesInFace(e))
+            for e in self._alongBoundaryComponent
+        ]
+
+    def boundaryVertices(self) -> list[list[Vertex]]:
+        return [
+            [ self._vertices[i - 1] for i in idcs ]
+            for idcs in self.boundaryIndices()
+        ]
+
+    def edgeIndices(self) -> list[OrientedEdge]:
+        return [(s, t) for (s, t) in self._next.keys() if s < t]
+
+    def edgeVertices(self) -> list[tuple[Vertex, Vertex]]:
+        return [
+            (self._vertices[s - 1], self._vertices[t - 1])
+            for (s, t) in self.edgeIndices()
         ]
 
 
@@ -456,6 +482,10 @@ if __name__ == '__main__':
         print(mesh.__dict__[key])
         print()
 
-    print('Face indices:')
-    print(mesh.faceIndices)
+    print('Edge indices:')
+    print(mesh.edgeIndices())
+    print()
+
+    print('Edge vertices:')
+    print(mesh.edgeVertices())
     print()
