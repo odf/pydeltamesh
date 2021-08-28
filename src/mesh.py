@@ -430,9 +430,9 @@ def triangulate(mesh: Mesh[Vertex]) -> Mesh[Vertex]:
     return fromOrientedFaces(
         mesh.vertices,
         [
-            [a, b, c]
+            [f[0], f[i], f[i + 1]]
             for f in mesh.faceIndices()
-            for (a, b, c) in triangulateCycle(f)
+            for i in range(1, len(f) - 1)
         ]
     )
 
@@ -469,16 +469,6 @@ def traceCycle(start: T, advance: Callable[[T], Union[T, None]]) -> list[T]:
             current = next
             if next == start:
                 return result
-
-
-def triangulateCycle(corners: list[T]) -> list[tuple[T, T, T]]:
-    if len(corners) < 3:
-        return []
-    else:
-        return [
-            (corners[0], corners[i], corners[i + 1])
-            for i in range(1, len(corners) - 1)
-        ]
 
 
 def cyclicPairs(indices: list[T]) -> list[tuple[T, T]]:
