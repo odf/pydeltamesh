@@ -264,6 +264,7 @@ from typing import TypeVar, Generic, Callable, Union
 T = TypeVar('T')
 Vertex = TypeVar('Vertex')
 OrientedEdge = tuple[int, int]
+Point = np.ndarray
 
 
 class Mesh(Generic[Vertex]):
@@ -294,8 +295,8 @@ class Mesh(Generic[Vertex]):
         return self._vertices[:]
 
     def vertex(self, index: int) -> Union[Vertex, None]:
-        if 1 <= index <= self.nrVertices:
-            return self._vertices[index - 1]
+        if 0 <= index < self.nrVertices:
+            return self._vertices[index]
         else:
             return None
 
@@ -310,7 +311,7 @@ class Mesh(Generic[Vertex]):
 
     def faceVertices(self) -> list[list[Vertex]]:
         return [
-            [ self._vertices[i - 1] for i in idcs ]
+            [ self.vertex(i) for i in idcs ]
             for idcs in self.faceIndices()
         ]
 
@@ -322,7 +323,7 @@ class Mesh(Generic[Vertex]):
 
     def boundaryVertices(self) -> list[list[Vertex]]:
         return [
-            [ self._vertices[i - 1] for i in idcs ]
+            [ self.vertex(i) for i in idcs ]
             for idcs in self.boundaryIndices()
         ]
 
@@ -331,7 +332,7 @@ class Mesh(Generic[Vertex]):
 
     def edgeVertices(self) -> list[tuple[Vertex, Vertex]]:
         return [
-            (self._vertices[s - 1], self._vertices[t - 1])
+            (self.vertex(s), self.vertex(t))
             for (s, t) in self.edgeIndices()
         ]
 
@@ -351,7 +352,7 @@ class Mesh(Generic[Vertex]):
 
     def neighborVertices(self) -> list[list[Vertex]]:
         return [
-            [ self._vertices[i - 1] for i in idcs ]
+            [ self.vertex(i) for i in idcs ]
             for idcs in self.neighborIndices()
         ]
 
@@ -364,7 +365,7 @@ def fromOrientedFaces(
     vertexData: list[Vertex],
     faceLists: list[list[int]]
 ) -> Mesh[Vertex]:
-    definedVertexSet = set(range(1, len(vertexData) + 1))
+    definedVertexSet = set(range(len(vertexData)))
     referencedVertexSet = set(concat(faceLists))
 
     if not definedVertexSet.issuperset(referencedVertexSet):
@@ -455,8 +456,16 @@ def combine(meshes: list[Mesh[Vertex]]) -> Mesh[Vertex]:
     return fromOrientedFaces(vertices, faces)
 
 
+def mapVertices(mesh: Mesh[Vertex], fn: Callable[[Vertex], T]) -> Mesh[T]:
+    return fromOrientedFaces(
+        [fn(v) for v in mesh.vertices],
+        mesh.faceIndices()
+    )
+
+
 def subdivide(
-    mesh: Mesh[Vertex], composeFn: Callable[[list[Vertex]], Vertex]
+    mesh: Mesh[Vertex],
+    composeFn: Callable[[list[Vertex]], Vertex]
 ) -> Mesh[Vertex]:
     allEdges = mesh.edgeIndices()
     nrVerts = mesh.nrVertices
@@ -465,14 +474,11 @@ def subdivide(
     midPointIndex = {}
     for i in range(nrEdges):
         (u, v) = allEdges[i]
-        midPointIndex[u, v] = midPointIndex[v, u] = i + nrVerts + 1
+        midPointIndex[u, v] = midPointIndex[v, u] = i + nrVerts
 
     sourceLists = (
-        [[mesh._vertices[i]] for i in range(nrVerts)] +
-        [
-            [mesh._vertices[u - 1], mesh._vertices[v - 1]]
-            for (u, v) in allEdges
-        ] +
+        [ [mesh._vertices[i]] for i in range(nrVerts) ] +
+        [ [mesh.vertex(u), mesh.vertex(v)] for (u, v) in allEdges ] +
         mesh.faceVertices()
     )
 
@@ -481,7 +487,7 @@ def subdivide(
     subFace = lambda u, v: [
         v,
         midPointIndex[v, mesh._next[u, v][1]],
-        mesh._toFace[u, v] + nrVerts + nrEdges + 1,
+        mesh._toFace[u, v] + nrVerts + nrEdges,
         midPointIndex[u, v]
     ]
 
@@ -492,6 +498,81 @@ def subdivide(
     ]
 
     return fromOrientedFaces(vertsOut, facesOut)
+
+
+def subdivideSmoothly(
+    mesh: Mesh[Vertex],
+    vertexPosition: Callable[[Vertex], Point],
+    isFixed: Callable[[Vertex], bool],
+    toOutputVertex: Callable[[list[Vertex], Point], Vertex]
+) -> Mesh[Vertex]:
+    nrVertices = mesh.nrVertices
+    nrEdges = len(mesh.edgeIndices())
+
+    def makeOutputVertex(indices, pos):
+        return toOutputVertex([mesh.vertex(i) for i in indices], pos)
+
+    meshSub = subdivide(mapVertices(mesh, vertexPosition), centroid)
+    subFaceIndices = meshSub.faceIndices()
+
+    facePoints = [
+        makeOutputVertex(idcs, meshSub.vertex(k + nrVertices + nrEdges))
+        for k, idcs in enumerate(subFaceIndices)
+    ]
+
+    boundaryIndicesSub = set(concat(meshSub.boundaryIndices()))
+    neighborsSub = meshSub.neighborIndices()
+
+    def edgePointPosition(index):
+        k = index + nrVertices
+
+        if k in boundaryIndicesSub:
+            return meshSub.vertex(k)
+        else:
+            return centroid([meshSub.vertex(i) for i in neighborsSub[k]])
+
+    edgePointPositions = [edgePointPosition(i) for i in range(nrEdges)]
+
+    edgePoints = [
+        makeOutputVertex([u, v], edgePointPosition(i))
+        for i, (u, v) in enumerate(mesh.edgeIndices())
+    ]
+
+    def vertexPointPosition(index):
+        posIn = meshSub.vertex(index)
+        neighbors = neighborsSub[index]
+        nrNeighbors = len(neighbors)
+
+        if isFixed(mesh.vertex(index)):
+            return posIn
+        elif index in boundaryIndicesSub:
+            a = centroid([
+                meshSub.vertex(k)
+                for k in neighbors
+                if k in boundaryIndicesSub
+            ])
+            return (posIn + a) / 2.0
+        else:
+            a = centroid([ meshSub.vertex(k) for k in neighbors ])
+            b = centroid([
+                edgePointPositions[k - nrVertices] for k in neighbors
+            ])
+            return ((nrNeighbors - 3) * posIn + a + 2 * b) / nrNeighbors
+
+    vertexPoints = [
+        makeOutputVertex([i], vertexPointPosition(i))
+        for i in range(nrVertices)
+    ]
+
+    print("#vertexPoints = %s" % len(vertexPoints))
+    print("#edgePoints = %s" % len(edgePoints))
+    print("#facePoints = %s" % len(facePoints))
+    print("subFaceIndices = %s" % subFaceIndices)
+
+    return fromOrientedFaces(
+        vertexPoints + edgePoints + facePoints,
+        subFaceIndices
+    )
 
 
 # -- Various helper functions, mostly for lists
@@ -552,6 +633,10 @@ def concat(lists: list[list[T]]) -> list[T]:
     return [x for xs in lists for x in xs]
 
 
+def centroid(points: list[Point]) -> Point:
+    return np.average(points, axis=0)
+
+
 # -- Test script
 
 if __name__ == '__main__':
@@ -562,15 +647,24 @@ if __name__ == '__main__':
 
     original = fromOrientedFaces(
         rawmesh['vertices'],
-        [f['vertices'] for f in rawmesh['faces']]
+        [ [ v - 1 for v in f['vertices'] ] for f in rawmesh['faces'] ]
     )
 
-    mesh = subdivide(original, lambda vs: np.average(vs, axis=0))
+    #mesh = original
+    mesh = subdivide(original, centroid)
 
-    for key in mesh.__dict__:
-        print(key)
-        print(mesh.__dict__[key])
-        print()
+    '''
+    mesh = subdivideSmoothly(
+        original,
+        lambda x: x,
+        lambda x: False,
+        lambda vs, p: p
+    )
+    '''
+
+    print('Vertices:')
+    print(mesh.vertices)
+    print()
 
     print('Face indices:')
     print(mesh.faceIndices())
