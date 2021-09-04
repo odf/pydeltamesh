@@ -481,7 +481,7 @@ def subdivide(
         midPointIndex[u, v] = midPointIndex[v, u] = i + nrVerts
 
     sourceLists = (
-        mesh.vertices +
+        [ [ v ] for v in mesh.vertices ] +
         [ [u, v] for (u, v) in mesh.edgeVertices() ] +
         mesh.faceVertices()
     )
