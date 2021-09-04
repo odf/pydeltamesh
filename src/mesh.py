@@ -291,6 +291,10 @@ class Mesh(Generic[Vertex]):
         return len(self._vertices)
 
     @property
+    def nrFaces(self) -> int:
+        return len(self._alongFace)
+
+    @property
     def vertices(self) -> list[Vertex]:
         return self._vertices[:]
 
@@ -311,7 +315,7 @@ class Mesh(Generic[Vertex]):
 
     def faceVertices(self) -> list[list[Vertex]]:
         return [
-            [ self.vertex(i) for i in idcs ]
+            [ self._vertices[i] for i in idcs ]
             for idcs in self.faceIndices()
         ]
 
@@ -323,7 +327,7 @@ class Mesh(Generic[Vertex]):
 
     def boundaryVertices(self) -> list[list[Vertex]]:
         return [
-            [ self.vertex(i) for i in idcs ]
+            [ self._vertices[i] for i in idcs ]
             for idcs in self.boundaryIndices()
         ]
 
@@ -332,7 +336,7 @@ class Mesh(Generic[Vertex]):
 
     def edgeVertices(self) -> list[tuple[Vertex, Vertex]]:
         return [
-            (self.vertex(s), self.vertex(t))
+            (self._vertices[s], self._vertices[t])
             for (s, t) in self.edgeIndices()
         ]
 
@@ -352,7 +356,7 @@ class Mesh(Generic[Vertex]):
 
     def neighborVertices(self) -> list[list[Vertex]]:
         return [
-            [ self.vertex(i) for i in idcs ]
+            [ self._vertices[i] for i in idcs ]
             for idcs in self.neighborIndices()
         ]
 
@@ -477,8 +481,8 @@ def subdivide(
         midPointIndex[u, v] = midPointIndex[v, u] = i + nrVerts
 
     sourceLists = (
-        [ [mesh._vertices[i]] for i in range(nrVerts) ] +
-        [ [mesh.vertex(u), mesh.vertex(v)] for (u, v) in allEdges ] +
+        mesh.vertices +
+        [ [u, v] for (u, v) in mesh.edgeVertices() ] +
         mesh.faceVertices()
     )
 
@@ -508,6 +512,7 @@ def subdivideSmoothly(
 ) -> Mesh[Vertex]:
     nrVertices = mesh.nrVertices
     nrEdges = len(mesh.edgeIndices())
+    nrFaces = mesh.nrFaces
 
     def makeOutputVertex(indices, pos):
         return toOutputVertex([mesh.vertex(i) for i in indices], pos)
@@ -518,6 +523,7 @@ def subdivideSmoothly(
     facePoints = [
         makeOutputVertex(idcs, meshSub.vertex(k + nrVertices + nrEdges))
         for k, idcs in enumerate(subFaceIndices)
+        if k < nrFaces
     ]
 
     boundaryIndicesSub = set(concat(meshSub.boundaryIndices()))
@@ -563,11 +569,6 @@ def subdivideSmoothly(
         makeOutputVertex([i], vertexPointPosition(i))
         for i in range(nrVertices)
     ]
-
-    print("#vertexPoints = %s" % len(vertexPoints))
-    print("#edgePoints = %s" % len(edgePoints))
-    print("#facePoints = %s" % len(facePoints))
-    print("subFaceIndices = %s" % subFaceIndices)
 
     return fromOrientedFaces(
         vertexPoints + edgePoints + facePoints,
@@ -651,16 +652,16 @@ if __name__ == '__main__':
     )
 
     #mesh = original
-    mesh = subdivide(original, centroid)
+    #mesh = subdivide(original, centroid)
 
-    '''
+    #'''
     mesh = subdivideSmoothly(
         original,
         lambda x: x,
         lambda x: False,
         lambda vs, p: p
     )
-    '''
+    #'''
 
     print('Vertices:')
     print(mesh.vertices)
