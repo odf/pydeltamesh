@@ -640,6 +640,7 @@ def centroid(points: list[Point]) -> Point:
 
 if __name__ == '__main__':
     import sys
+    import polyscope as ps # type: ignore
 
     with open(sys.argv[1]) as fp:
         rawmesh = loadrawmesh(fp)
@@ -661,14 +662,13 @@ if __name__ == '__main__':
     )
     #'''
 
-    print('Vertices:')
-    print(mesh.vertices)
-    print()
+    ps.init()
 
-    print('Face indices:')
-    print(mesh.faceIndices())
-    print()
+    ps.register_surface_mesh(
+        "my mesh",
+        np.array(mesh.vertices),
+        mesh.faceIndices(),
+        #smooth_shade=True
+    )
 
-    print('Neighbor indices:')
-    print(mesh.neighborIndices())
-    print()
+    ps.show()
