@@ -645,30 +645,20 @@ if __name__ == '__main__':
     with open(sys.argv[1]) as fp:
         rawmesh = loadrawmesh(fp)
 
-    original = fromOrientedFaces(
+    mesh = fromOrientedFaces(
         rawmesh['vertices'],
         [ [ v - 1 for v in f['vertices'] ] for f in rawmesh['faces'] ]
     )
 
-    #mesh = original
-    #mesh = subdivide(original, centroid)
-
-    #'''
-    mesh = subdivideSmoothly(
-        original,
-        lambda x: x,
-        lambda x: False,
-        lambda vs, p: p
-    )
-    #'''
+    for i in range(2):
+        mesh = subdivideSmoothly(
+            mesh, lambda x: x, lambda x: False, lambda _, p: p
+        )
 
     ps.init()
 
     ps.register_surface_mesh(
-        "my mesh",
-        np.array(mesh.vertices),
-        mesh.faceIndices(),
-        #smooth_shade=True
+        "mesh", np.array(mesh.vertices), mesh.faceIndices()
     )
 
     ps.show()
