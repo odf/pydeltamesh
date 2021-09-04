@@ -488,17 +488,15 @@ def subdivide(
 
     vertsOut = [composeFn(vs) for vs in sourceLists]
 
-    subFace = lambda u, v: [
-        v,
-        midPointIndex[v, mesh._next[u, v][1]],
-        mesh._toFace[u, v] + nrVerts + nrEdges,
-        midPointIndex[u, v]
-    ]
-
     facesOut = [
-        subFace(u, v)
-        for (u, v) in mesh._next
-        if mesh._toFace.get((u, v)) is not None
+        [
+            v,
+            midPointIndex[v, mesh._next[u, v][1]],
+            k + nrVerts + nrEdges,
+            midPointIndex[u, v]
+        ]
+        for k, f in enumerate(mesh.faceIndices())
+        for (u, v) in cyclicPairs(f)
     ]
 
     return fromOrientedFaces(vertsOut, facesOut)
