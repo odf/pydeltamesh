@@ -343,14 +343,17 @@ class Mesh(Generic[Vertex]):
     def _nextAroundVertex(self, e: OrientedEdge) -> OrientedEdge:
         return self._next[opposite(e)]
 
-    def vertexNeighbors(self, e: OrientedEdge) -> list[int]:
+    def _vertexNeighbors(self, e: OrientedEdge) -> list[int]:
         return [
             t for (s, t) in traceCycle(e, self._nextAroundVertex)
         ][::-1]
 
+    def vertexNeighbors(self, v: int) -> list[int]:
+        return self._vertexNeighbors(self._atVertex[v])
+
     def neighborIndices(self) -> list[list[int]]:
         return [
-            canonicalCircular(self.vertexNeighbors(e))
+            canonicalCircular(self._vertexNeighbors(e))
             for e in self._atVertex
         ]
 
@@ -574,6 +577,68 @@ def subdivideSmoothly(
     )
 
 
+def poleVertexIndices(mesh: Mesh[Vertex]) -> list[int]:
+    boundary = set(concat(mesh.boundaryIndices()))
+    degree = lambda v: len(mesh.vertexNeighbors(v))
+
+    return [
+        v for v in range(mesh.nrVertices)
+        if degree(v) not in ([2, 3] if v in boundary else [4])
+    ]
+
+
+def isCoarseningSeed(seed: int, mesh: Mesh[Vertex]) -> bool:
+    boundary = set(concat(mesh.boundaryIndices()))
+
+    vertices: set[int] = set()
+    edgeCenters: set[int] = set()
+    faceCenters: set[int] = set()
+
+    vertices.add(seed)
+    queue = [seed]
+
+    while len(queue):
+        v = queue.pop()
+
+        for w in mesh.vertexNeighbors(v):
+            if w in vertices or w in faceCenters:
+                return False
+
+            edgeCenters.add(w)
+            neighbors = mesh._vertexNeighbors((w, v))
+
+            if w in boundary:
+                if v not in boundary or len(neighbors) != 3:
+                    return False
+            elif len(neighbors) != 4:
+                    return False
+
+            for u in (neighbors[0], neighbors[-2]):
+                if u in edgeCenters:
+                    return False
+
+                if u in boundary:
+                    if w not in boundary or u in faceCenters:
+                        return False
+                    elif u not in vertices:
+                        vertices.add(u)
+                        queue.append(u)
+                elif u in vertices:
+                    return False
+                else:
+                    faceCenters.add(u)
+
+            if w not in boundary:
+                u = neighbors[1]
+                if u in edgeCenters or u in faceCenters:
+                    return False
+                elif u not in vertices:
+                    vertices.add(u)
+                    queue.append(u)
+
+    return True
+
+
 # -- Various helper functions, mostly for lists
 
 def extractCycles(
@@ -650,11 +715,17 @@ if __name__ == '__main__':
         [ [ v - 1 for v in f['vertices'] ] for f in rawmesh['faces'] ]
     )
 
-    for i in range(2):
+    for i in range(0):
         mesh = subdivideSmoothly(
             mesh, lambda x: x, lambda x: False, lambda _, p: p
         )
 
+    print("Pole indices: %s" % poleVertexIndices(mesh))
+
+    seeds = [v for v in range(mesh.nrVertices) if isCoarseningSeed(v, mesh)]
+    print("Coarsening seeds: %s" % seeds)
+
+    #'''
     ps.init()
 
     ps.register_surface_mesh(
@@ -662,3 +733,4 @@ if __name__ == '__main__':
     )
 
     ps.show()
+    #'''
