@@ -497,12 +497,12 @@ def subdivide(
     facesOut = [
         [
             v,
-            midPointIndex[v, mesh._next[u, v][1]],
+            midPointIndex[v, w],
             k + nrVerts + nrEdges,
             midPointIndex[u, v]
         ]
         for k, f in enumerate(mesh.faceIndices())
-        for (u, v) in cyclicPairs(f)
+        for (u, v, w) in cyclicTriples(f)
     ]
 
     return fromOrientedFaces(vertsOut, facesOut)
@@ -678,6 +678,14 @@ def traceCycle(start: T, advance: Callable[[T], Union[T, None]]) -> list[T]:
 
 def cyclicPairs(indices: list[T]) -> list[tuple[T, T]]:
     return list(zip(indices, indices[1:] + indices[:1]))
+
+
+def cyclicTriples(indices: list[T]) -> list[tuple[T, T, T]]:
+    return list(zip(
+        indices,
+        indices[1:] + indices[:1],
+        indices[2:] + indices[:2]
+    ))
 
 
 def canonicalCircular(items: list[T]) -> list[T]:
