@@ -259,7 +259,7 @@ def makechambers(faces):
 
 # -- Half-edge based mesh implementation
 
-from typing import TypeVar, Generic, Callable, Union
+from typing import TypeVar, Generic, Callable, Union, Optional
 
 T = TypeVar('T')
 Vertex = TypeVar('Vertex')
@@ -348,8 +348,11 @@ class Mesh(Generic[Vertex]):
             t for (s, t) in traceCycle(e, self._nextAroundVertex)
         ][::-1]
 
-    def vertexNeighbors(self, v: int) -> list[int]:
-        return self._vertexNeighbors(self._atVertex[v])
+    def vertexNeighbors(self, v: int, w: Optional[int] = None) -> list[int]:
+        if w is None:
+            return self._vertexNeighbors(self._atVertex[v])
+        else:
+            return self._vertexNeighbors((v, w))
 
     def neighborIndices(self) -> list[list[int]]:
         return [
@@ -605,7 +608,7 @@ def isCoarseningSeed(seed: int, mesh: Mesh[Vertex]) -> bool:
                 return False
 
             edgeCenters.add(w)
-            neighbors = mesh._vertexNeighbors((w, v))
+            neighbors = mesh.vertexNeighbors(w, v)
 
             if w in boundary:
                 if v not in boundary or len(neighbors) != 3:
@@ -715,7 +718,7 @@ if __name__ == '__main__':
         [ [ v - 1 for v in f['vertices'] ] for f in rawmesh['faces'] ]
     )
 
-    for i in range(0):
+    for i in range(1):
         mesh = subdivideSmoothly(
             mesh, lambda x: x, lambda x: False, lambda _, p: p
         )
