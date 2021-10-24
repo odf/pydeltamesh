@@ -733,7 +733,7 @@ if __name__ == '__main__':
 
     print("Pole indices: %s" % poleVertexIndices(mesh))
 
-    seeds = [v for v in range(mesh.nrVertices) if isCoarseningSeed(v, mesh)]
+    seeds = [v for v in mesh.faceIndices()[0] if isCoarseningSeed(v, mesh)]
     print("Coarsening seeds: %s" % seeds)
 
     #'''
