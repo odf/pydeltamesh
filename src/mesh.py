@@ -298,7 +298,7 @@ class Mesh(Generic[Vertex]):
     def vertices(self) -> list[Vertex]:
         return self._vertices[:]
 
-    def vertex(self, index: int) -> Union[Vertex, None]:
+    def vertex(self, index: int) -> Optional[Vertex]:
         if 0 <= index < self.nrVertices:
             return self._vertices[index]
         else:
@@ -487,7 +487,7 @@ def connectedComponents(mesh: Mesh[Vertex]) -> list[Mesh[Vertex]]:
 
             vertexSet = set(queue)
             mapping = dict((v, i) for i, v in enumerate(queue))
-            vertsOut = [mesh.vertex(v) for v in queue]
+            vertsOut = filterOptional([mesh.vertex(v) for v in queue])
             facesOut = [
                 [mapping[v] for v in f]
                 for f in mesh.faceIndices()
@@ -622,7 +622,11 @@ def poleVertexIndices(mesh: Mesh[Vertex]) -> list[int]:
     ]
 
 
-def isCoarseningSeed(seed: int, mesh: Mesh[Vertex]) -> bool:
+def coarseningTypes(
+    seed: int, mesh: Mesh[Vertex]
+) -> Optional[
+    tuple[set[int], set[int], set[int]]
+]:
     boundary = set(concat(mesh.boundaryIndices()))
 
     vertices: set[int] = set()
@@ -637,48 +641,48 @@ def isCoarseningSeed(seed: int, mesh: Mesh[Vertex]) -> bool:
 
         for w in mesh.vertexNeighbors(v):
             if w in vertices or w in faceCenters:
-                return False
+                return None
 
             edgeCenters.add(w)
             neighbors = mesh.vertexNeighbors(w, v)
 
             if w in boundary:
                 if v not in boundary or len(neighbors) != 3:
-                    return False
+                    return None
             elif len(neighbors) != 4:
-                    return False
+                    return None
 
             for u in (neighbors[0], neighbors[-2]):
                 if u in edgeCenters:
-                    return False
+                    return None
 
                 if u in boundary:
                     if w not in boundary or u in faceCenters:
-                        return False
+                        return None
                     elif u not in vertices:
                         vertices.add(u)
                         queue.append(u)
                 elif u in vertices:
-                    return False
+                    return None
                 else:
                     faceCenters.add(u)
 
             if w not in boundary:
                 u = neighbors[1]
                 if u in edgeCenters or u in faceCenters:
-                    return False
+                    return None
                 elif u not in vertices:
                     vertices.add(u)
                     queue.append(u)
 
-    return True
+    return (vertices, edgeCenters, faceCenters)
 
 
 # -- Various helper functions, mostly for lists
 
 def extractCycles(
     items: list[T],
-    advance: Callable[[T], Union[T, None]]
+    advance: Callable[[T], Optional[T]]
 ) -> list[list[T]]:
 
     cycles: list[list[T]] = []
@@ -693,7 +697,7 @@ def extractCycles(
     return cycles
 
 
-def traceCycle(start: T, advance: Callable[[T], Union[T, None]]) -> list[T]:
+def traceCycle(start: T, advance: Callable[[T], Optional[T]]) -> list[T]:
     result: list[T] = []
     current = start
 
@@ -744,6 +748,10 @@ def centroid(points: list[Point]) -> Point:
     return np.average(points, axis=0)
 
 
+def filterOptional(items: list[Optional[T]]) -> list[T]:
+    return [x for x in items if x is not None]
+
+
 # -- Test script
 
 if __name__ == '__main__':
@@ -765,7 +773,10 @@ if __name__ == '__main__':
 
     print("Pole indices: %s" % poleVertexIndices(mesh))
 
-    seeds = [v for v in mesh.faceIndices()[0] if isCoarseningSeed(v, mesh)]
+    seeds = [
+        v for v in mesh.faceIndices()[0]
+        if coarseningTypes(v, mesh) is not None
+    ]
     print("Coarsening seeds: %s" % seeds)
 
     components = connectedComponents(mesh)
