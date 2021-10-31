@@ -466,6 +466,38 @@ def combine(meshes: list[Mesh[Vertex]]) -> Mesh[Vertex]:
     return fromOrientedFaces(vertices, faces)
 
 
+def connectedComponents(mesh: Mesh[Vertex]) -> list[Mesh[Vertex]]:
+    output: list[Mesh[Vertex]] = []
+    seen: set[int] = set()
+
+    for v0 in range(mesh.nrVertices):
+        if not v0 in seen:
+            seen.add(v0)
+            queue = [v0]
+            k = 0
+
+            while k < len(queue):
+                v = queue[k]
+                k += 1
+
+                for w in mesh.vertexNeighbors(v):
+                    if not w in seen:
+                        seen.add(w)
+                        queue.append(w)
+
+            vertexSet = set(queue)
+            mapping = dict((v, i) for i, v in enumerate(queue))
+            vertsOut = [mesh.vertex(v) for v in queue]
+            facesOut = [
+                [mapping[v] for v in f]
+                for f in mesh.faceIndices()
+                if all(v in vertexSet for v in f)
+            ]
+            output.append(fromOrientedFaces(vertsOut, facesOut))
+
+    return output
+
+
 def mapVertices(mesh: Mesh[Vertex], fn: Callable[[Vertex], T]) -> Mesh[T]:
     return fromOrientedFaces(
         [fn(v) for v in mesh.vertices],
@@ -735,6 +767,11 @@ if __name__ == '__main__':
 
     seeds = [v for v in mesh.faceIndices()[0] if isCoarseningSeed(v, mesh)]
     print("Coarsening seeds: %s" % seeds)
+
+    components = connectedComponents(mesh)
+    print("Split into %s connected components" % len(components))
+
+    mesh = components[0]
 
     #'''
     ps.init()
