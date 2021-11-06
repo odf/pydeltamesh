@@ -702,14 +702,10 @@ def traceCycle(start: T, advance: Callable[[T], Optional[T]]) -> list[T]:
     current = start
 
     while True:
-        next = advance(current)
-        if next is None:
+        result.append(current)
+        current = advance(current)
+        if current is None or current == start:
             return result
-        else:
-            result.append(current)
-            current = next
-            if next == start:
-                return result
 
 
 def cyclicPairs(indices: list[T]) -> list[tuple[T, T]]:
