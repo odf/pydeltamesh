@@ -367,6 +367,30 @@ class Mesh(Generic[Vertex]):
         ]
 
 
+class BufferedIterator(Generic[T]):
+    def __init__(self, gen):
+        self._gen = gen
+        self._buffer = []
+
+    def _advance(self):
+        try:
+            val = next(self._gen)
+            self._buffer.append(val)
+            return True
+        except StopIteration:
+            return False
+
+    def get(self, i):
+        while len(self._buffer) <= i and self._advance():
+            pass
+        return self._buffer[i]
+
+    def result(self):
+        while self._advance():
+            pass
+        return self._buffer[:]
+
+
 def opposite(e: OrientedEdge) -> OrientedEdge:
     return (e[1], e[0])
 
@@ -678,6 +702,32 @@ def coarseningTypes(
     return (vertices, edgeCenters, faceCenters)
 
 
+def invariant(mesh: Mesh[Vertex]) -> Optional[list[int]]:
+    iter = BufferedIterator[tuple[tuple[int, int], tuple[int, int]]]
+    best: Optional[iter] = None
+
+    for v in range(mesh.nrVertices):
+        candidate: iter = BufferedIterator(
+            orientedEdgesInOrientedBreadthFirstOrder(v, mesh)
+        )
+        if best is None:
+            best = candidate
+        else:
+            for i in range(mesh.nrVertices):
+                a = best.get(i)
+                b = candidate.get(i)
+                if a is None or b is None or a[1] < b[1]:
+                    break
+                elif b[1] < a[1]:
+                    best = candidate
+                    break
+
+    if best is None:
+        return None
+    else:
+        return [ v for _, e in best.result() for v in list(e) ]
+
+
 def orientedEdgesInOrientedBreadthFirstOrder(
     seed: int, mesh: Mesh[Vertex]
 ) -> Iterator[
@@ -698,9 +748,9 @@ def orientedEdgesInOrientedBreadthFirstOrder(
                 count += 1
                 queue.append(w)
 
-        offset = np.argmin([vertexOrder[w] for w in neighbors])
+        offset = int(np.argmin([vertexOrder[w] for w in neighbors]))
 
-        for w in (neighbors[offset:] + neighbors[:offset]):
+        for w in rotate(offset, neighbors):
             yield (v, w), (vertexOrder[v], vertexOrder[w])
 
 
@@ -725,13 +775,18 @@ def extractCycles(
 
 def traceCycle(start: T, advance: Callable[[T], Optional[T]]) -> list[T]:
     result: list[T] = []
-    current = start
+    current: Optional[T] = start
 
     while True:
-        result.append(current)
-        current = advance(current)
+        if current is not None: # satisfy type checker
+            result.append(current)
+            current = advance(current)
         if current is None or current == start:
             return result
+
+
+def rotate(i: int, items: list[T]) -> list[T]:
+    return items[i:] + items[:i]
 
 
 def cyclicPairs(indices: list[T]) -> list[tuple[T, T]]:
@@ -788,14 +843,6 @@ if __name__ == '__main__':
         [ [ v - 1 for v in f['vertices'] ] for f in rawmesh['faces'] ]
     )
 
-    print("Oriented breadth-first signature at seed 0:")
-    sig = [
-        v
-        for _, e in orientedEdgesInOrientedBreadthFirstOrder(0, mesh)
-        for v in list(e)
-    ]
-    print("  %s" % ' '.join(map(str, sig)))
-
     print("Found %s poles." % len(poleVertexIndices(mesh)))
 
     for i in range(1):
@@ -813,6 +860,10 @@ if __name__ == '__main__':
     print("Split into %s connected components" % len(components))
 
     mesh = components[0]
+
+    invar = invariant(mesh)
+    if invar is not None:
+        print("Invariant: %s" % ' '.join(map(str, invar)))
 
     #'''
     ps.init()
