@@ -259,7 +259,7 @@ def makechambers(faces):
 
 # -- Half-edge based mesh implementation
 
-from typing import TypeVar, Generic, Callable, Union, Optional
+from typing import Callable, Generic, Iterator, Optional, TypeVar
 
 T = TypeVar('T')
 Vertex = TypeVar('Vertex')
@@ -678,6 +678,32 @@ def coarseningTypes(
     return (vertices, edgeCenters, faceCenters)
 
 
+def orientedEdgesInOrientedBreadthFirstOrder(
+    seed: int, mesh: Mesh[Vertex]
+) -> Iterator[
+    tuple[tuple[int, int], tuple[int, int]]
+]:
+    vertexOrder = { seed: 0 }
+    count = 1
+    queue = [seed]
+
+    while len(queue) > 0:
+        v = queue.pop(0)
+
+        neighbors = mesh.vertexNeighbors(v)
+
+        for w in neighbors:
+            if vertexOrder.get(w) is None:
+                vertexOrder[w] = count
+                count += 1
+                queue.append(w)
+
+        offset = np.argmin([vertexOrder[w] for w in neighbors])
+
+        for w in (neighbors[offset:] + neighbors[:offset]):
+            yield (v, w), (vertexOrder[v], vertexOrder[w])
+
+
 # -- Various helper functions, mostly for lists
 
 def extractCycles(
@@ -762,12 +788,20 @@ if __name__ == '__main__':
         [ [ v - 1 for v in f['vertices'] ] for f in rawmesh['faces'] ]
     )
 
+    print("Oriented breadth-first signature at seed 0:")
+    sig = [
+        v
+        for _, e in orientedEdgesInOrientedBreadthFirstOrder(0, mesh)
+        for v in list(e)
+    ]
+    print("  %s" % ' '.join(map(str, sig)))
+
+    print("Found %s poles." % len(poleVertexIndices(mesh)))
+
     for i in range(1):
         mesh = subdivideSmoothly(
             mesh, lambda x: x, lambda x: False, lambda _, p: p
         )
-
-    print("Pole indices: %s" % poleVertexIndices(mesh))
 
     seeds = [
         v for v in mesh.faceIndices()[0]
