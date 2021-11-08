@@ -707,20 +707,21 @@ def invariant(mesh: Mesh[Vertex]) -> Optional[list[int]]:
     best: Optional[iter] = None
 
     for v in range(mesh.nrVertices):
-        candidate: iter = BufferedIterator(
-            orientedEdgesInOrientedBreadthFirstOrder(v, mesh)
-        )
-        if best is None:
-            best = candidate
-        else:
-            for i in range(mesh.nrVertices):
-                a = best.get(i)
-                b = candidate.get(i)
-                if a is None or b is None or a[1] < b[1]:
-                    break
-                elif b[1] < a[1]:
-                    best = candidate
-                    break
+        for w in mesh.vertexNeighbors(v):
+            candidate: iter = BufferedIterator(
+                orientedEdgesInOrientedBreadthFirstOrder((v, w), mesh)
+            )
+            if best is None:
+                best = candidate
+            else:
+                for i in range(mesh.nrVertices):
+                    a = best.get(i)
+                    b = candidate.get(i)
+                    if a is None or b is None or a[1] < b[1]:
+                        break
+                    elif b[1] < a[1]:
+                        best = candidate
+                        break
 
     if best is None:
         return None
@@ -729,29 +730,30 @@ def invariant(mesh: Mesh[Vertex]) -> Optional[list[int]]:
 
 
 def orientedEdgesInOrientedBreadthFirstOrder(
-    seed: int, mesh: Mesh[Vertex]
+    seed: tuple[int, int], mesh: Mesh[Vertex]
 ) -> Iterator[
     tuple[tuple[int, int], tuple[int, int]]
 ]:
-    vertexOrder = { seed: 0 }
+    u, v = seed
+    vertexOrder = { u: 0 }
     count = 1
-    queue = [seed]
+    queue = [(u, v)]
 
     while len(queue) > 0:
-        v = queue.pop(0)
+        u, v = queue.pop(0)
 
-        neighbors = mesh.vertexNeighbors(v)
+        neighbors = rotate(-1, mesh.vertexNeighbors(u, v))
 
         for w in neighbors:
             if vertexOrder.get(w) is None:
                 vertexOrder[w] = count
                 count += 1
-                queue.append(w)
+                queue.append((w, u))
 
         offset = int(np.argmin([vertexOrder[w] for w in neighbors]))
 
         for w in rotate(offset, neighbors):
-            yield (v, w), (vertexOrder[v], vertexOrder[w])
+            yield (u, w), (vertexOrder[u], vertexOrder[w])
 
 
 # -- Various helper functions, mostly for lists
