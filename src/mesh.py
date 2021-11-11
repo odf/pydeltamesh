@@ -383,7 +383,7 @@ class BufferedIterator(Generic[T]):
     def get(self, i):
         while len(self._buffer) <= i and self._advance():
             pass
-        return self._buffer[i]
+        return self._buffer[i] if i < len(self._buffer) else None
 
     def result(self):
         while self._advance():
@@ -714,7 +714,8 @@ def invariant(mesh: Mesh[Vertex]) -> Optional[list[int]]:
             if best is None:
                 best = candidate
             else:
-                for i in range(mesh.nrVertices):
+                i = 0
+                while True:
                     a = best.get(i)
                     b = candidate.get(i)
                     if a is None or b is None or a[1] < b[1]:
@@ -722,6 +723,8 @@ def invariant(mesh: Mesh[Vertex]) -> Optional[list[int]]:
                     elif b[1] < a[1]:
                         best = candidate
                         break
+                    else:
+                        i += 1
 
     if best is None:
         return None
