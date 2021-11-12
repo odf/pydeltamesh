@@ -354,6 +354,9 @@ class Mesh(Generic[Vertex]):
         else:
             return self._vertexNeighbors((v, w))
 
+    def vertexDegree(self, v: int) -> int:
+        return len(self.vertexNeighbors(v))
+
     def neighborIndices(self) -> list[list[int]]:
         return [
             canonicalCircular(self._vertexNeighbors(e))
@@ -706,30 +709,47 @@ def invariant(mesh: Mesh[Vertex]) -> Optional[list[int]]:
     iter = BufferedIterator[tuple[tuple[int, int], tuple[int, int]]]
     best: Optional[iter] = None
 
-    for v in range(mesh.nrVertices):
-        for w in mesh.vertexNeighbors(v):
-            candidate: iter = BufferedIterator(
-                orientedEdgesInOrientedBreadthFirstOrder((v, w), mesh)
-            )
-            if best is None:
-                best = candidate
-            else:
-                i = 0
-                while True:
-                    a = best.get(i)
-                    b = candidate.get(i)
-                    if a is None or b is None or a[1] < b[1]:
-                        break
-                    elif b[1] < a[1]:
-                        best = candidate
-                        break
-                    else:
-                        i += 1
+    for (v, w) in startEdgeCandidates(mesh):
+        candidate: iter = BufferedIterator(
+            orientedEdgesInOrientedBreadthFirstOrder((v, w), mesh)
+        )
+        if best is None:
+            best = candidate
+        else:
+            i = 0
+            while True:
+                a = best.get(i)
+                b = candidate.get(i)
+                if a is None or b is None or a[1] < b[1]:
+                    break
+                elif b[1] < a[1]:
+                    best = candidate
+                    break
+                else:
+                    i += 1
 
     if best is None:
         return None
     else:
         return [ v for _, e in best.result() for v in list(e) ]
+
+
+def startEdgeCandidates(mesh: Mesh[Vertex]) -> list[tuple[int, int]]:
+    degree = [mesh.vertexDegree(v) for v in range(mesh.nrVertices)]
+    bestValue: Optional[tuple[int, int]] = None
+    result: list[tuple[int, int]] = []
+
+    for v in range(mesh.nrVertices):
+        for w in mesh.vertexNeighbors(v):
+            value = (degree[v], degree[w])
+            if bestValue is None or value > bestValue:
+                bestValue = value
+                result = []
+
+            if value == bestValue:
+                result.append((v, w))
+
+    return result
 
 
 def orientedEdgesInOrientedBreadthFirstOrder(
