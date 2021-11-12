@@ -707,7 +707,17 @@ def coarseningTypes(
 
 def invariant(mesh: Mesh[Vertex]) -> Optional[list[int]]:
     iter = BufferedIterator[tuple[tuple[int, int], tuple[int, int]]]
+    starts = optimalStartEdges(mesh)
+    edges: iter = BufferedIterator(
+        orientedEdgesInOrientedBreadthFirstOrder(starts[0], mesh)
+    )
+    return [ v for _, e in edges.result() for v in list(e) ]
+
+
+def optimalStartEdges(mesh: Mesh[Vertex]) -> list[tuple[int, int]]:
+    iter = BufferedIterator[tuple[tuple[int, int], tuple[int, int]]]
     best: Optional[iter] = None
+    result: list[tuple[int, int]] = []
 
     for (v, w) in startEdgeCandidates(mesh):
         candidate: iter = BufferedIterator(
@@ -715,23 +725,26 @@ def invariant(mesh: Mesh[Vertex]) -> Optional[list[int]]:
         )
         if best is None:
             best = candidate
+            result = [(v, w)]
         else:
             i = 0
             while True:
                 a = best.get(i)
                 b = candidate.get(i)
-                if a is None or b is None or a[1] < b[1]:
+                if a is None:
+                    assert(b is None)
+                    result.append((v, w))
+                    break
+                elif a[1] < b[1]:
                     break
                 elif b[1] < a[1]:
                     best = candidate
+                    result = [(v, w)]
                     break
                 else:
                     i += 1
 
-    if best is None:
-        return None
-    else:
-        return [ v for _, e in best.result() for v in list(e) ]
+    return result
 
 
 def startEdgeCandidates(mesh: Mesh[Vertex]) -> list[tuple[int, int]]:
@@ -886,9 +899,15 @@ if __name__ == '__main__':
 
     mesh = components[0]
 
+    print("Optimal start edges: %s" % optimalStartEdges(mesh))
+
     invar = invariant(mesh)
-    if invar is not None:
-        print("Invariant: %s" % ' '.join(map(str, invar)))
+    if invar is None:
+        print("Could not compute an invariant.")
+    elif len(invar) > 400:
+        print("Invariant: %s..." % invar[:400])
+    else:
+        print("Invariant: %s" % invar)
 
     #'''
     ps.init()
