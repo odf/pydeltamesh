@@ -105,7 +105,7 @@ class Mesh(Generic[Vertex]):
     def __init__(
         self,
         vertices: list[Vertex],
-        atVertex: list[OrientedEdge],
+        atVertex: dict[int, OrientedEdge],
         alongFace: list[OrientedEdge],
         alongBoundaryComponent: list[OrientedEdge],
         toFace: dict[OrientedEdge, int],
@@ -184,7 +184,11 @@ class Mesh(Generic[Vertex]):
 
     def vertexNeighbors(self, v: int, w: Optional[int] = None) -> list[int]:
         if w is None:
-            return self._vertexNeighbors(self._atVertex[v])
+            e = self._atVertex.get(v)
+            if e is None:
+                return []
+            else:
+                return self._vertexNeighbors(e)
         else:
             return self._vertexNeighbors((v, w))
 
@@ -193,8 +197,8 @@ class Mesh(Generic[Vertex]):
 
     def neighborIndices(self) -> list[list[int]]:
         return [
-            canonicalCircular(self._vertexNeighbors(e))
-            for e in self._atVertex
+            canonicalCircular(self.vertexNeighbors(v))
+            for v in range(self.nrVertices)
         ]
 
     def neighborVertices(self) -> list[list[Vertex]]:
@@ -241,8 +245,6 @@ def fromOrientedFaces(
 
     if not definedVertexSet.issuperset(referencedVertexSet):
         raise ValueError('an undefined vertex appears in a face')
-    elif not referencedVertexSet.issuperset(definedVertexSet):
-        raise ValueError('one of the vertices does not appear in any face')
     elif any(len(f) < 2 for f in faceLists):
         raise ValueError('there is a face with fewer than 2 vertices')
     elif any(hasDuplicates(f) for f in faceLists):
@@ -270,7 +272,7 @@ def fromOrientedFaces(
         for c in extractCycles(verticesAtBoundary, nextOnBoundary.get)
     ]
 
-    atVertex = sorted(dict((s, (s, t)) for (s, t) in orientedEdges).values())
+    atVertex = dict((s, (s, t)) for (s, t) in orientedEdges)
 
     toFace = dict(
         (e, i) for i in range(len(faceLists)) for e in orientedEdgeLists[i]
