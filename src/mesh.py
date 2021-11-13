@@ -646,7 +646,9 @@ def orientedEdgesInOrientedBreadthFirstOrder(
                 count += 1
                 queue.append((w, u))
 
-        for w in canonicalCircular(neighbors):
+        offset = int(np.argmin([vertexOrder[w] for w in neighbors]))
+
+        for w in rotate(offset, neighbors):
             yield (u, w), (vertexOrder[u], vertexOrder[w])
 
 
