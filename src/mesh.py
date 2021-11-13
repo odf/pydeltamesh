@@ -714,6 +714,31 @@ def invariant(mesh: Mesh[Vertex]) -> list[int]:
     return [ v for _, e in edges.result() for v in list(e) ]
 
 
+def symmetries(mesh: Mesh[Vertex]) -> list[list[int]]:
+    starts = optimalStartEdges(mesh)
+    edges0 = BufferedIterator(
+        orientedEdgesInOrientedBreadthFirstOrder(starts[0], mesh)
+    ).result()
+
+    result = []
+
+    for s in starts:
+        edges = BufferedIterator(
+            orientedEdgesInOrientedBreadthFirstOrder(s, mesh)
+        ).result()
+        mapping = [-1] * mesh.nrVertices
+
+        for i in range(len(edges)):
+            e0 = edges0[i][0]
+            e = edges[i][0]
+            mapping[e0[0]] = e[0]
+            mapping[e0[1]] = e[1]
+
+        result.append(mapping)
+
+    return result
+
+
 def optimalStartEdges(mesh: Mesh[Vertex]) -> list[tuple[int, int]]:
     iter = BufferedIterator[tuple[tuple[int, int], tuple[int, int]]]
     best: Optional[iter] = None
@@ -906,6 +931,14 @@ if __name__ == '__main__':
         print("Invariant: %s..." % invar[:400])
     else:
         print("Invariant: %s" % invar)
+
+    syms = symmetries(mesh)
+    print("Symmetries:")
+    for s in syms:
+        if len(s) > 16:
+            print("  %s..." % s[:16])
+        else:
+            print("  %s" % s)
 
     #'''
     ps.init()
