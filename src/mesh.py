@@ -50,9 +50,9 @@ def loadrawmesh(fp):
 
             for i in range(len(pars)):
                 v, vt, vn = map(int, (pars[i] + '/0/0').split('/')[:3])
-                fv.append(len(vertices) + 1 - v if v < 0 else v)
-                ft.append(len(texverts) + 1 - vt if vt < 0 else vt)
-                fn.append(len(normals) + 1 - vn if vn < 0 else vn)
+                fv.append(v + (len(vertices) + 1 if v < 0 else 0))
+                ft.append(vt + (len(texverts) + 1 if vt < 0 else 0))
+                fn.append(vn + (len(normals) + 1 if vn < 0 else 0))
 
             faces.append({
                 'vertices': fv,
@@ -740,12 +740,10 @@ if __name__ == '__main__':
         [ [ v - 1 for v in f['vertices'] ] for f in rawmesh['faces'] ]
     )
 
+    print(
+        "Mesh has %s vertices and %s faces" % (mesh.nrVertices, mesh.nrFaces)
+    )
     print("Found %s poles." % len(poleVertexIndices(mesh)))
-
-    for i in range(1):
-        mesh = subdivideSmoothly(
-            mesh, lambda x: x, lambda x: False, lambda _, p: p
-        )
 
     seeds = [
         v for v in mesh.faceIndices()[0]
@@ -774,7 +772,7 @@ if __name__ == '__main__':
         else:
             print("  %s" % s)
 
-    #'''
+    '''
     ps.init()
 
     ps.register_surface_mesh(
