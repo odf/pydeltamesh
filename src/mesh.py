@@ -328,6 +328,7 @@ def combine(meshes: list[Mesh[Vertex]]) -> Mesh[Vertex]:
 
 
 def connectedComponents(mesh: Mesh[Vertex]) -> list[Mesh[Vertex]]:
+    faceIndices = mesh.faceIndices()
     output: list[Mesh[Vertex]] = []
     seen: set[int] = set()
 
@@ -351,8 +352,8 @@ def connectedComponents(mesh: Mesh[Vertex]) -> list[Mesh[Vertex]]:
             vertsOut = filterOptional([mesh.vertex(v) for v in queue])
             facesOut = [
                 [mapping[v] for v in f]
-                for f in mesh.faceIndices()
-                if all(v in vertexSet for v in f)
+                for f in faceIndices
+                if f[0] in vertexSet
             ]
             output.append(fromOrientedFaces(vertsOut, facesOut))
 
