@@ -705,7 +705,7 @@ def coarseningTypes(
     return (vertices, edgeCenters, faceCenters)
 
 
-def invariant(mesh: Mesh[Vertex]) -> Optional[list[int]]:
+def invariant(mesh: Mesh[Vertex]) -> list[int]:
     iter = BufferedIterator[tuple[tuple[int, int], tuple[int, int]]]
     starts = optimalStartEdges(mesh)
     edges: iter = BufferedIterator(
@@ -902,9 +902,7 @@ if __name__ == '__main__':
     print("Optimal start edges: %s" % optimalStartEdges(mesh))
 
     invar = invariant(mesh)
-    if invar is None:
-        print("Could not compute an invariant.")
-    elif len(invar) > 400:
+    if len(invar) > 400:
         print("Invariant: %s..." % invar[:400])
     else:
         print("Invariant: %s" % invar)
