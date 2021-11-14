@@ -138,12 +138,25 @@ class Mesh(Generic[Vertex]):
         else:
             return None
 
-    def verticesInFace(self, e0: OrientedEdge) -> list[int]:
+    def isOnBoundary(self, e: OrientedEdge) -> bool:
+        return self._toBoundaryComponent.get(e) is not None
+
+    def _indicesForFace(self, e0: OrientedEdge) -> list[int]:
         return [e[0] for e in traceCycle(e0, self._next.get)]
+
+    def indicesForFace(self, v: int, w: Optional[int] = None) -> list[int]:
+        if w is None:
+            e = self._atVertex.get(v)
+            if e is None:
+                return []
+            else:
+                return self._indicesForFace(e)
+        else:
+            return self._indicesForFace((v, w))
 
     def faceIndices(self) -> list[list[int]]:
         return [
-            canonicalCircular(self.verticesInFace(e))
+            canonicalCircular(self._indicesForFace(e))
             for e in self._alongFace
         ]
 
@@ -155,7 +168,7 @@ class Mesh(Generic[Vertex]):
 
     def boundaryIndices(self) -> list[list[int]]:
         return [
-            canonicalCircular(self.verticesInFace(e))
+            canonicalCircular(self._indicesForFace(e))
             for e in self._alongBoundaryComponent
         ]
 
@@ -330,33 +343,38 @@ def combine(meshes: list[Mesh[Vertex]]) -> Mesh[Vertex]:
 
 
 def connectedComponents(mesh: Mesh[Vertex]) -> list[Mesh[Vertex]]:
-    faceIndices = mesh.faceIndices()
+    faces = mesh.faceIndices()
     output: list[Mesh[Vertex]] = []
-    seen: set[int] = set()
+    seen: set[OrientedEdge] = set()
 
-    for v0 in range(mesh.nrVertices):
-        if not v0 in seen:
-            seen.add(v0)
-            queue = [v0]
+    for f0 in faces:
+        e = (f0[0], f0[1])
+
+        if not e in seen:
+            seen.add(e)
+            queue = [f0]
             k = 0
 
             while k < len(queue):
-                v = queue[k]
+                f = queue[k]
                 k += 1
 
-                for w in mesh.vertexNeighbors(v):
-                    if not w in seen:
-                        seen.add(w)
-                        queue.append(w)
+                for (u, v) in cyclicPairs(f):
+                    g = canonicalCircular(mesh.indicesForFace(v, u))
+                    e = (g[0], g[1])
 
-            vertexSet = set(queue)
-            mapping = dict((v, i) for i, v in enumerate(queue))
-            vertsOut = filterOptional([mesh.vertex(v) for v in queue])
-            facesOut = [
-                [mapping[v] for v in f]
-                for f in faceIndices
-                if f[0] in vertexSet
-            ]
+                    if not e in seen:
+                        seen.add(e)
+                        queue.append(g)
+
+            tmp: set[int] = set()
+            for f in queue:
+                tmp.update(f)
+            verticesUsed = sorted(tmp)
+
+            mapping = dict((v, i) for (i, v) in enumerate(verticesUsed))
+            vertsOut = [ mesh.vertex(v) for v in verticesUsed ]
+            facesOut = [ [ mapping[v] for v in f ] for f in queue ]
             output.append(fromOrientedFaces(vertsOut, facesOut))
 
     return output
