@@ -3,3 +3,4 @@
 /data/
 imgui.ini
 /.polyscope.ini
+__pycache__
