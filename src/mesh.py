@@ -482,7 +482,7 @@ def poleVertexIndices(mesh: Mesh[Vertex]) -> list[int]:
 
     return [
         v for v in range(mesh.nrVertices)
-        if degree(v) not in ([2, 3] if v in boundary else [4])
+        if degree(v) not in ([2, 3] if v in boundary else [0, 4])
     ]
 
 
@@ -746,6 +746,11 @@ if __name__ == '__main__':
     print(
         "Mesh has %s vertices and %s faces" % (mesh.nrVertices, mesh.nrFaces)
     )
+    isolated = [
+        v for v in range(mesh.nrVertices)
+        if len(mesh.vertexNeighbors(v)) == 0
+    ]
+    print("Found %s isolated vertices." % len(isolated))
     print("Found %s poles." % len(poleVertexIndices(mesh)))
 
     seeds = [
