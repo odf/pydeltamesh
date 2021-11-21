@@ -1,12 +1,15 @@
 from typing import Iterator, Optional, TypeVar
 
 T = TypeVar('T')
+FaceList = list[list[int]]
 OrientedEdge = tuple[int, int]
 Location = tuple[int, int]
 
 
+# -- Data type(s)
+
 class Complex(object):
-    def __init__(self, faces: list[list[int]]):
+    def __init__(self, faces: FaceList):
         self._faces = faces
         self._neighbors = _faceNeighbors(faces)
         self._degrees = _vertexDegrees(faces)
@@ -35,8 +38,9 @@ class Complex(object):
 
 
 
-def components(complex: Complex) -> list[Complex]:
-    result: list[Complex] = []
+# -- API functions
+
+def components(complex: Complex) -> Iterator[FaceList]:
     seen: set[int] = set()
 
     for f0 in range(complex.nrFaces):
@@ -56,14 +60,12 @@ def components(complex: Complex) -> list[Complex]:
                             seen.add(g)
                             queue.append(g)
 
-            result.append(Complex([complex.facesVertices(f) for f in queue]))
-
-    return result
+            yield [complex.facesVertices(f) for f in queue]
 
 
-# -- Helper functions
+# -- High level helper functions
 
-def _faceNeighbors(faces: list[list[int]]) -> list[list[Optional[Location]]]:
+def _faceNeighbors(faces: FaceList) -> list[list[Optional[Location]]]:
     edgeLocation: dict[OrientedEdge, Location] = {}
 
     for i, face in enumerate(faces):
@@ -79,7 +81,7 @@ def _faceNeighbors(faces: list[list[int]]) -> list[list[Optional[Location]]]:
     ]
 
 
-def _vertexDegrees(faces: list[list[int]]) -> list[int]:
+def _vertexDegrees(faces: FaceList) -> list[int]:
     maxVertex = max(max(f) for f in faces)
     degree = [0] * (maxVertex + 1)
 
@@ -90,7 +92,9 @@ def _vertexDegrees(faces: list[list[int]]) -> list[int]:
     return degree
 
 
-def _cyclicPairs(indices: list[T]) -> list[tuple[T, T]]:
+# -- Low level helper functions
+
+def _cyclicPairs(indices: list[T]) -> Iterator[tuple[T, T]]:
     return zip(indices, indices[1:] + indices[:1])
 
 
@@ -107,4 +111,4 @@ if __name__ == '__main__':
         [ [ v for v in f['vertices'] ] for f in data['faces'] ]
     )
 
-    print("%d components" % len(components(complex)))
+    print("%d components" % len(list(components(complex))))
