@@ -27,20 +27,20 @@ class Complex(object):
     def nrFaces(self) -> int:
         return len(self._faces)
 
-    def degree(self, v: int) -> int:
-        return self._degrees[v] if 0 <= v < len(self._degrees) else 0
+    def vertexDegree(self, v: int) -> int:
+        return self._degrees[v]
 
     def facesVertices(self, f: int) -> list[int]:
-        return self._faces[f] if 0 <= f < len(self._faces) else []
+        return self._faces[f]
 
     def faceNeighbors(self, f: int) -> list[Optional[Location]]:
-        return self._neighbors[f] if 0 <= f < len(self._neighbors) else []
+        return self._neighbors[f]
 
 
 
 # -- API functions
 
-def components(complex: Complex) -> Iterator[int]:
+def components(complex: Complex) -> Iterator[list[int]]:
     seen: set[int] = set()
 
     for f0 in range(complex.nrFaces):
@@ -92,10 +92,69 @@ def _vertexDegrees(faces: FaceList) -> list[int]:
     return degree
 
 
+def _startCandidates(
+    complex: Complex, faceSelection: Optional[list[int]] = None
+) -> list[
+    tuple[int, int]
+]:
+    faces = faceSelection or range(complex.nrFaces)
+    best = 0
+    result: list[tuple[int, int]] = []
+
+    for f in faces:
+        vs = complex.facesVertices(f)
+
+        for k, v in enumerate(vs):
+            d = complex.vertexDegree(v)
+
+            if d > best:
+                best = d
+                result = []
+
+            if d == best:
+                result.append((f, k))
+
+    return result
+
+
+def _traverseAndRenumber(
+    complex: Complex, startFace: int, startOffset: int
+) -> Iterator [
+    tuple[list[int], list[int]]
+]:
+    vertexOrder: dict[int, int] = {}
+    nextVertex = 1
+    queue = [(startFace, startOffset)]
+    seen = set([startFace])
+
+    while len(queue) > 0:
+        f, k = queue.pop(0)
+        vs = _rotate(k, complex.facesVertices(f))
+        nbs = _rotate(k, complex.faceNeighbors(f))
+
+        for v in vs:
+            if not v in vertexOrder:
+                vertexOrder[v] = nextVertex
+                nextVertex += 1
+
+        for nb in nbs:
+            if nb is not None:
+                fn, kn = nb
+                if not fn in seen:
+                    queue.append((fn, kn))
+                    seen.add(fn)
+
+        yield vs, [vertexOrder[v] for v in vs]
+
+
 # -- Low level helper functions
 
 def _cyclicPairs(indices: list[T]) -> Iterator[tuple[T, T]]:
-    return zip(indices, indices[1:] + indices[:1])
+    return zip(indices, _rotate(1, indices))
+
+
+def _rotate(i: int, items: list[T]) -> list[T]:
+    return items[i:] + items[:i]
 
 
 # -- Test script
@@ -111,4 +170,10 @@ if __name__ == '__main__':
         [ [ v for v in f['vertices'] ] for f in data['faces'] ]
     )
 
-    print("%d components" % len(list(components(complex))))
+    comps = list(components(complex))
+    print("%d components" % len(comps))
+
+    starts = list(_startCandidates(complex, comps[0]))
+    print("Found %d start candidates" % len(starts))
+
+    print(len(list(_traverseAndRenumber(complex, starts[0][0], starts[0][1]))))
