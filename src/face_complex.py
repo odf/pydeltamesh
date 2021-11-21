@@ -1,4 +1,4 @@
-from typing import Iterator, Optional, TypeVar
+from typing import Generic, Iterator, Optional, TypeVar
 
 T = TypeVar('T')
 FaceList = list[list[int]]
@@ -38,6 +38,31 @@ class Complex(object):
 
 
 
+class BufferedIterator(Generic[T]):
+    def __init__(self, gen):
+        self._gen = gen
+        self._buffer = []
+
+    def _advance(self):
+        try:
+            val = next(self._gen)
+            self._buffer.append(val)
+            return True
+        except StopIteration:
+            return False
+
+    def get(self, i):
+        while len(self._buffer) <= i and self._advance():
+            pass
+        return self._buffer[i] if i < len(self._buffer) else None
+
+    def result(self):
+        while self._advance():
+            pass
+        return self._buffer[:]
+
+
+
 # -- API functions
 
 def components(complex: Complex) -> Iterator[list[int]]:
@@ -61,6 +86,43 @@ def components(complex: Complex) -> Iterator[list[int]]:
                             queue.append(g)
 
             yield queue
+
+
+def invariant(
+    complex: Complex, faceSelection: Optional[list[int]] = None
+) -> list[
+    int
+]:
+    iter = BufferedIterator[tuple[list[int], list[int]]]
+    starts = _optimalStarts(complex, faceSelection)
+    faces: iter = BufferedIterator(
+        _traverseAndRenumber(complex, *starts[0])
+    )
+    return [ v for _, f in faces.result() for v in f + [0] ]
+
+
+def symmetries(
+    complex: Complex, faceSelection: Optional[list[int]] = None
+) -> Iterator[
+    dict[int, int]
+]:
+    iter = BufferedIterator[tuple[list[int], list[int]]]
+    iterators: list[iter] = [
+        BufferedIterator(_traverseAndRenumber(complex, *s))
+        for s in _optimalStarts(complex, faceSelection)
+    ]
+
+    faces0 = iterators[0].result()
+
+    for it in iterators:
+        faces = it.result()
+        mapping = {}
+
+        for i in range(len(faces)):
+            for k in range(len(faces[i][0])):
+                mapping[faces0[i][0][k]] = faces[i][0][k]
+
+        yield mapping
 
 
 # -- High level helper functions
@@ -90,6 +152,43 @@ def _vertexDegrees(faces: FaceList) -> list[int]:
             degree[v] += 1
 
     return degree
+
+
+def _optimalStarts(
+    complex: Complex, faceSelection: Optional[list[int]] = None
+) -> list[
+    tuple[int, int]
+]:
+    iter = BufferedIterator[tuple[list[int], list[int]]]
+    best: Optional[iter] = None
+    result: list[tuple[int, int]] = []
+
+    for start in _startCandidates(complex, faceSelection):
+        candidate: iter = BufferedIterator(
+            _traverseAndRenumber(complex, *start)
+        )
+        if best is None:
+            best = candidate
+            result = [start]
+        else:
+            i = 0
+            while True:
+                a = best.get(i)
+                b = candidate.get(i)
+                if a is None:
+                    assert(b is None)
+                    result.append(start)
+                    break
+                elif a[1] < b[1]:
+                    break
+                elif b[1] < a[1]:
+                    best = candidate
+                    result = [start]
+                    break
+                else:
+                    i += 1
+
+    return result
 
 
 def _startCandidates(
@@ -173,7 +272,16 @@ if __name__ == '__main__':
     comps = list(components(complex))
     print("%d components" % len(comps))
 
-    starts = list(_startCandidates(complex, comps[0]))
-    print("Found %d start candidates" % len(starts))
+    invar = invariant(complex, comps[0])
+    if len(invar) > 400:
+        print("Invariant: %s..." % invar[:400])
+    else:
+        print("Invariant: %s" % invar)
 
-    print(len(list(_traverseAndRenumber(complex, starts[0][0], starts[0][1]))))
+    syms = symmetries(complex, comps[0])
+    print("Symmetries:")
+    for s in syms:
+        if len(s) > 16:
+            print("  %s..." % list(s.items())[:16])
+        else:
+            print("  %s" % s)
