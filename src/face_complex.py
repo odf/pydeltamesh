@@ -40,7 +40,7 @@ class Complex(object):
 
 # -- API functions
 
-def components(complex: Complex) -> Iterator[FaceList]:
+def components(complex: Complex) -> Iterator[int]:
     seen: set[int] = set()
 
     for f0 in range(complex.nrFaces):
@@ -60,7 +60,7 @@ def components(complex: Complex) -> Iterator[FaceList]:
                             seen.add(g)
                             queue.append(g)
 
-            yield [complex.facesVertices(f) for f in queue]
+            yield queue
 
 
 # -- High level helper functions
