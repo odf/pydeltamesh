@@ -93,12 +93,8 @@ def invariant(
 ) -> list[
     int
 ]:
-    iter = BufferedIterator[tuple[list[int], list[int]]]
-    starts = _optimalStarts(complex, faceSelection)
-    faces: iter = BufferedIterator(
-        _traverseAndRenumber(complex, *starts[0])
-    )
-    return [ v for _, f in faces.result() for v in f + [0] ]
+    traversals = _optimalTraversals(complex, faceSelection)
+    return [ v for _, f in traversals[0].result() for v in f + [0] ]
 
 
 def symmetries(
@@ -106,16 +102,12 @@ def symmetries(
 ) -> Iterator[
     dict[int, int]
 ]:
-    iter = BufferedIterator[tuple[list[int], list[int]]]
-    iterators: list[iter] = [
-        BufferedIterator(_traverseAndRenumber(complex, *s))
-        for s in _optimalStarts(complex, faceSelection)
-    ]
+    traversals = _optimalTraversals(complex, faceSelection)
 
-    faces0 = iterators[0].result()
+    faces0 = traversals[0].result()
 
-    for it in iterators:
-        faces = it.result()
+    for trav in traversals:
+        faces = trav.result()
         mapping = {}
 
         for i in range(len(faces)):
@@ -154,14 +146,14 @@ def _vertexDegrees(faces: FaceList) -> list[int]:
     return degree
 
 
-def _optimalStarts(
+def _optimalTraversals(
     complex: Complex, faceSelection: Optional[list[int]] = None
 ) -> list[
-    tuple[int, int]
+    BufferedIterator[tuple[list[int], list[int]]]
 ]:
     iter = BufferedIterator[tuple[list[int], list[int]]]
     best: Optional[iter] = None
-    result: list[tuple[int, int]] = []
+    result: list[iter] = []
 
     for start in _startCandidates(complex, faceSelection):
         candidate: iter = BufferedIterator(
@@ -169,7 +161,7 @@ def _optimalStarts(
         )
         if best is None:
             best = candidate
-            result = [start]
+            result = [candidate]
         else:
             i = 0
             while True:
@@ -177,13 +169,13 @@ def _optimalStarts(
                 b = candidate.get(i)
                 if a is None:
                     assert(b is None)
-                    result.append(start)
+                    result.append(candidate)
                     break
                 elif a[1] < b[1]:
                     break
                 elif b[1] < a[1]:
                     best = candidate
-                    result = [start]
+                    result = [candidate]
                     break
                 else:
                     i += 1
