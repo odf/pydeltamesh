@@ -68,10 +68,10 @@ def _faceNeighbors(faces: list[list[int]]) -> list[list[Optional[Location]]]:
 
     for i, face in enumerate(faces):
         for k, (v, w) in enumerate(_cyclicPairs(face)):
-            if edgeLocation.get((v, w)) is None:
-                edgeLocation[(v, w)] = (i, k)
-            else:
+            if (v, w) in edgeLocation:
                 raise ValueError('an oriented edge appears more than once')
+            else:
+                edgeLocation[(v, w)] = (i, k)
 
     return [
         [edgeLocation.get((w, v)) for v, w in _cyclicPairs(face)]
@@ -91,7 +91,7 @@ def _vertexDegrees(faces: list[list[int]]) -> list[int]:
 
 
 def _cyclicPairs(indices: list[T]) -> list[tuple[T, T]]:
-    return list(zip(indices, indices[1:] + indices[:1]))
+    return zip(indices, indices[1:] + indices[:1])
 
 
 # -- Test script
