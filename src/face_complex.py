@@ -1,3 +1,4 @@
+from hashlib import sha1
 from typing import Generic, Iterator, Optional, TypeVar
 
 T = TypeVar('T')
@@ -76,7 +77,9 @@ class Component(object):
     def __init__(self, complex: Complex, faceIndices: list[int]):
         self._complex = complex
         self._faceIndices = faceIndices
-        self._optimalTraversals: list[Traversal] = []
+        self._optimalTraversals: Optional[list[Traversal]] = None
+        self._invariant: Optional[str] = None
+        self._fingerprint: Optional[str] = None
 
     @property
     def complex(self) -> Complex:
@@ -88,9 +91,24 @@ class Component(object):
 
     @property
     def optimalTraversals(self) -> list[Traversal]:
-        if len(self._optimalTraversals) == 0:
+        if self._optimalTraversals is None:
             self._optimalTraversals = _optimalTraversals(self)
         return self._optimalTraversals
+
+    @property
+    def invariant(self) -> str:
+        if self._invariant is None:
+            self._invariant = " ".join([
+                " ".join(map(str, f)) + " 0"
+                for _, f in self.optimalTraversals[0].result()
+            ])
+        return self._invariant
+
+    @property
+    def fingerprint(self) -> str:
+        if self._fingerprint is None:
+            self._fingerprint = sha1(str.encode(self.invariant)).hexdigest()
+        return self._fingerprint
 
 
 
@@ -117,11 +135,6 @@ def components(complex: Complex) -> Iterator[Component]:
                             queue.append(g)
 
             yield Component(complex, queue)
-
-
-def invariant(component: Component) -> list[int]:
-    traversals = component.optimalTraversals
-    return [ v for _, f in traversals[0].result() for v in f + [0] ]
 
 
 def symmetries(component: Component) -> Iterator[dict[int, int]]:
@@ -276,17 +289,19 @@ if __name__ == '__main__':
 
     comps = list(components(complex))
     print("%d components" % len(comps))
+    print()
 
-    invar = invariant(comps[0])
+    print("Fingerprints:")
+    for c in comps:
+        print("  %s" % c.fingerprint)
+    print()
+
+    symcounts = [len(list(symmetries(c))) for c in comps]
+    print("Symmetry counts: %s" % " ".join(map(str, symcounts)))
+    print()
+
+    invar = comps[0].invariant
     if len(invar) > 400:
-        print("Invariant: %s..." % invar[:400])
+        print("Invariant of first component: %s..." % invar[:400])
     else:
-        print("Invariant: %s" % invar)
-
-    syms = symmetries(comps[0])
-    print("Symmetries:")
-    for s in syms:
-        if len(s) > 16:
-            print("  %s..." % list(s.items())[:16])
-        else:
-            print("  %s" % s)
+        print("Invariant of first component: %s" % invar)
