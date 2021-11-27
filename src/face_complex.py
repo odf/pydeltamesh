@@ -65,7 +65,7 @@ class Complex(object):
     def vertexDegree(self, v: int) -> int:
         return self._degrees[v]
 
-    def facesVertices(self, f: int) -> list[int]:
+    def faceVertices(self, f: int) -> list[int]:
         return self._faces[f]
 
     def faceNeighbors(self, f: int) -> list[Optional[Location]]:
@@ -215,20 +215,23 @@ def _optimalTraversals(component: Component) -> list[Traversal]:
 
 
 def _startCandidates(component: Component) -> list[tuple[int, int]]:
-    best = 0
+    complex = component.complex
+
+    cost: dict[int, int] = {}
+    for f in component.faceIndices:
+        for v in complex.faceVertices(f):
+            d = complex.vertexDegree(v)
+            cost[d] = cost.get(d, 0) + 1
+
+    d = min((c, i) for i, c in cost.items())[1]
+
     result: list[tuple[int, int]] = []
 
     for f in component.faceIndices:
-        vs = component.complex.facesVertices(f)
+        vs = complex.faceVertices(f)
 
         for k, v in enumerate(vs):
-            d = complex.vertexDegree(v)
-
-            if d > best:
-                best = d
-                result = []
-
-            if d == best:
+            if complex.vertexDegree(v) == d:
                 result.append((f, k))
 
     return result
@@ -246,7 +249,7 @@ def _traverseAndRenumber(
 
     while len(queue) > 0:
         f, k = queue.pop(0)
-        vs = _rotate(k, complex.facesVertices(f))
+        vs = _rotate(k, complex.faceVertices(f))
         nbs = _rotate(k, complex.faceNeighbors(f))
 
         for v in vs:
@@ -296,7 +299,7 @@ if __name__ == '__main__':
         print("  %s" % c.fingerprint)
     print()
 
-    symcounts = [len(list(symmetries(c))) for c in comps]
+    symcounts = [len(c.optimalTraversals) for c in comps]
     print("Symmetry counts: %s" % " ".join(map(str, symcounts)))
     print()
 
