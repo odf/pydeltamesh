@@ -3,14 +3,44 @@ from typing import Generic, Iterator, Optional, TypeVar
 T = TypeVar('T')
 
 
-# -- Type aliases
+# -- Simple type aliases
 
 FaceList = list[list[int]]
 OrientedEdge = tuple[int, int]
 Location = tuple[int, int]
 
 
-# -- Data types
+# -- Helper types
+
+class BufferedIterator(Generic[T]):
+    def __init__(self, gen):
+        self._gen = gen
+        self._buffer = []
+
+    def _advance(self):
+        try:
+            val = next(self._gen)
+            self._buffer.append(val)
+            return True
+        except StopIteration:
+            return False
+
+    def get(self, i):
+        while len(self._buffer) <= i and self._advance():
+            pass
+        return self._buffer[i] if i < len(self._buffer) else None
+
+    def result(self):
+        while self._advance():
+            pass
+        return self._buffer[:]
+
+
+Traversal = BufferedIterator[tuple[list[int], list[int]]]
+
+
+
+# -- Core data types
 
 class Complex(object):
     def __init__(self, faces: FaceList):
@@ -46,6 +76,7 @@ class Component(object):
     def __init__(self, complex: Complex, faceIndices: list[int]):
         self._complex = complex
         self._faceIndices = faceIndices
+        self._optimalTraversals: list[Traversal] = []
 
     @property
     def complex(self) -> Complex:
@@ -55,30 +86,11 @@ class Component(object):
     def faceIndices(self) -> Iterator[int]:
         return iter(self._faceIndices)
 
-
-
-class BufferedIterator(Generic[T]):
-    def __init__(self, gen):
-        self._gen = gen
-        self._buffer = []
-
-    def _advance(self):
-        try:
-            val = next(self._gen)
-            self._buffer.append(val)
-            return True
-        except StopIteration:
-            return False
-
-    def get(self, i):
-        while len(self._buffer) <= i and self._advance():
-            pass
-        return self._buffer[i] if i < len(self._buffer) else None
-
-    def result(self):
-        while self._advance():
-            pass
-        return self._buffer[:]
+    @property
+    def optimalTraversals(self) -> list[Traversal]:
+        if len(self._optimalTraversals) == 0:
+            self._optimalTraversals = _optimalTraversals(self)
+        return self._optimalTraversals
 
 
 
@@ -108,12 +120,12 @@ def components(complex: Complex) -> Iterator[Component]:
 
 
 def invariant(component: Component) -> list[int]:
-    traversals = _optimalTraversals(component)
+    traversals = component.optimalTraversals
     return [ v for _, f in traversals[0].result() for v in f + [0] ]
 
 
 def symmetries(component: Component) -> Iterator[dict[int, int]]:
-    traversals = _optimalTraversals(component)
+    traversals = component.optimalTraversals
 
     faces0 = traversals[0].result()
 
@@ -157,15 +169,12 @@ def _vertexDegrees(faces: FaceList) -> list[int]:
     return degree
 
 
-def _optimalTraversals(component: Component) -> list[
-    BufferedIterator[tuple[list[int], list[int]]]
-]:
-    iter = BufferedIterator[tuple[list[int], list[int]]]
-    best: Optional[iter] = None
-    result: list[iter] = []
+def _optimalTraversals(component: Component) -> list[Traversal]:
+    best: Optional[Traversal] = None
+    result: list[Traversal] = []
 
     for start in _startCandidates(component):
-        candidate: iter = BufferedIterator(
+        candidate: Traversal = BufferedIterator(
             _traverseAndRenumber(component.complex, *start)
         )
         if best is None:
