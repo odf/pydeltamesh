@@ -1,12 +1,16 @@
 from typing import Generic, Iterator, Optional, TypeVar
 
 T = TypeVar('T')
+
+
+# -- Type aliases
+
 FaceList = list[list[int]]
 OrientedEdge = tuple[int, int]
 Location = tuple[int, int]
 
 
-# -- Data type(s)
+# -- Data types
 
 class Complex(object):
     def __init__(self, faces: FaceList):
@@ -38,6 +42,21 @@ class Complex(object):
 
 
 
+class Component(object):
+    def __init__(self, complex: Complex, faceIndices: list[int]):
+        self._complex = complex
+        self._faceIndices = faceIndices
+
+    @property
+    def complex(self) -> Complex:
+        return self._complex
+
+    @property
+    def faceIndices(self) -> Iterator[int]:
+        return iter(self._faceIndices)
+
+
+
 class BufferedIterator(Generic[T]):
     def __init__(self, gen):
         self._gen = gen
@@ -63,9 +82,9 @@ class BufferedIterator(Generic[T]):
 
 
 
-# -- API functions
+# -- High level functions
 
-def components(complex: Complex) -> Iterator[list[int]]:
+def components(complex: Complex) -> Iterator[Component]:
     seen: set[int] = set()
 
     for f0 in range(complex.nrFaces):
@@ -85,24 +104,16 @@ def components(complex: Complex) -> Iterator[list[int]]:
                             seen.add(g)
                             queue.append(g)
 
-            yield queue
+            yield Component(complex, queue)
 
 
-def invariant(
-    complex: Complex, faceSelection: Optional[list[int]] = None
-) -> list[
-    int
-]:
-    traversals = _optimalTraversals(complex, faceSelection)
+def invariant(component: Component) -> list[int]:
+    traversals = _optimalTraversals(component)
     return [ v for _, f in traversals[0].result() for v in f + [0] ]
 
 
-def symmetries(
-    complex: Complex, faceSelection: Optional[list[int]] = None
-) -> Iterator[
-    dict[int, int]
-]:
-    traversals = _optimalTraversals(complex, faceSelection)
+def symmetries(component: Component) -> Iterator[dict[int, int]]:
+    traversals = _optimalTraversals(component)
 
     faces0 = traversals[0].result()
 
@@ -117,7 +128,7 @@ def symmetries(
         yield mapping
 
 
-# -- High level helper functions
+# -- Mid level helper functions
 
 def _faceNeighbors(faces: FaceList) -> list[list[Optional[Location]]]:
     edgeLocation: dict[OrientedEdge, Location] = {}
@@ -146,18 +157,16 @@ def _vertexDegrees(faces: FaceList) -> list[int]:
     return degree
 
 
-def _optimalTraversals(
-    complex: Complex, faceSelection: Optional[list[int]] = None
-) -> list[
+def _optimalTraversals(component: Component) -> list[
     BufferedIterator[tuple[list[int], list[int]]]
 ]:
     iter = BufferedIterator[tuple[list[int], list[int]]]
     best: Optional[iter] = None
     result: list[iter] = []
 
-    for start in _startCandidates(complex, faceSelection):
+    for start in _startCandidates(component):
         candidate: iter = BufferedIterator(
-            _traverseAndRenumber(complex, *start)
+            _traverseAndRenumber(component.complex, *start)
         )
         if best is None:
             best = candidate
@@ -183,17 +192,12 @@ def _optimalTraversals(
     return result
 
 
-def _startCandidates(
-    complex: Complex, faceSelection: Optional[list[int]] = None
-) -> list[
-    tuple[int, int]
-]:
-    faces = faceSelection or range(complex.nrFaces)
+def _startCandidates(component: Component) -> list[tuple[int, int]]:
     best = 0
     result: list[tuple[int, int]] = []
 
-    for f in faces:
-        vs = complex.facesVertices(f)
+    for f in component.faceIndices:
+        vs = component.complex.facesVertices(f)
 
         for k, v in enumerate(vs):
             d = complex.vertexDegree(v)
@@ -264,13 +268,13 @@ if __name__ == '__main__':
     comps = list(components(complex))
     print("%d components" % len(comps))
 
-    invar = invariant(complex, comps[0])
+    invar = invariant(comps[0])
     if len(invar) > 400:
         print("Invariant: %s..." % invar[:400])
     else:
         print("Invariant: %s" % invar)
 
-    syms = symmetries(complex, comps[0])
+    syms = symmetries(comps[0])
     print("Symmetries:")
     for s in syms:
         if len(s) > 16:
