@@ -82,6 +82,10 @@ class Component(object):
         self._fingerprint: Optional[str] = None
 
     @property
+    def nrFaces(self) -> int:
+        return len(self._faceIndices)
+
+    @property
     def complex(self) -> Complex:
         return self._complex
 
@@ -293,6 +297,8 @@ if __name__ == '__main__':
     comps = list(components(complex))
     print("%d components" % len(comps))
     print()
+
+    assert(complex.nrFaces == sum(c.nrFaces for c in comps))
 
     print("Fingerprints:")
     for c in comps:
