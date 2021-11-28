@@ -281,6 +281,19 @@ def _rotate(i: int, items: list[T]) -> list[T]:
     return items[i:] + items[:i]
 
 
+# -- Display via Polyscope
+
+def display(vertices: list[list[float]], faceIndices: list[list[int]]):
+    import numpy as np
+    import polyscope as ps # type: ignore
+
+    ps.init()
+
+    ps.register_surface_mesh("mesh", np.array(vertices), faceIndices)
+
+    ps.show()
+
+
 # -- Test script
 
 if __name__ == '__main__':
