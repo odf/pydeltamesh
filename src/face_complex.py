@@ -80,6 +80,7 @@ class Component(object):
         self._optimalTraversals: Optional[list[Traversal]] = None
         self._invariant: Optional[str] = None
         self._fingerprint: Optional[str] = None
+        self._vertexOrders: Optional[list[list[int]]] = None
 
     @property
     def nrFaces(self) -> int:
@@ -114,6 +115,13 @@ class Component(object):
             self._fingerprint = sha1(str.encode(self.invariant)).hexdigest()
         return self._fingerprint
 
+    @property
+    def vertexOrders(self) -> list[list[int]]:
+        if self._vertexOrders is None:
+            self._vertexOrders = map(_vertexOrder, self.optimalTraversals)
+
+        return self._vertexOrders
+
 
 
 # -- High level functions
@@ -139,22 +147,6 @@ def components(complex: Complex) -> Iterator[Component]:
                             queue.append(g)
 
             yield Component(complex, queue)
-
-
-def symmetries(component: Component) -> Iterator[dict[int, int]]:
-    traversals = component.optimalTraversals
-
-    faces0 = traversals[0].result()
-
-    for trav in traversals:
-        faces = trav.result()
-        mapping = {}
-
-        for i in range(len(faces)):
-            for k in range(len(faces[i][0])):
-                mapping[faces0[i][0][k]] = faces[i][0][k]
-
-        yield mapping
 
 
 # -- Mid level helper functions
@@ -246,7 +238,7 @@ def _traverseAndRenumber(
 ) -> Iterator [
     tuple[list[int], list[int]]
 ]:
-    vertexOrder: dict[int, int] = {}
+    vertexReIndex: dict[int, int] = {}
     nextVertex = 1
     queue = [(startFace, startOffset)]
     seen = set([startFace])
@@ -257,8 +249,8 @@ def _traverseAndRenumber(
         nbs = _rotate(k, complex.faceNeighbors(f))
 
         for v in vs:
-            if not v in vertexOrder:
-                vertexOrder[v] = nextVertex
+            if not v in vertexReIndex:
+                vertexReIndex[v] = nextVertex
                 nextVertex += 1
 
         for nb in nbs:
@@ -268,7 +260,19 @@ def _traverseAndRenumber(
                     queue.append((fn, kn))
                     seen.add(fn)
 
-        yield vs, [vertexOrder[v] for v in vs]
+        yield vs, [vertexReIndex[v] for v in vs]
+
+
+def _vertexOrder(traversal: Traversal) -> list[int]:
+    faceData = traversal.result()
+    vMax = max(max(f) for _, f in faceData)
+
+    result = [0] * (vMax + 1)
+    for fOld, fNew in faceData:
+        for v, w in zip(fOld, fNew):
+            result[w] = v
+
+    return result
 
 
 # -- Low level helper functions
@@ -322,8 +326,14 @@ if __name__ == '__main__':
     print("Symmetry counts: %s" % " ".join(map(str, symcounts)))
     print()
 
+    print("Vertex orders:")
+    for c in comps:
+        for vs in c.vertexOrders:
+            suffix = " ..." if len(vs) > 11 else ""
+            print("  %s%s" % (" ".join(map(str, vs[1:11])), suffix))
+        print()
+    print()
+
     invar = comps[0].invariant
-    if len(invar) > 400:
-        print("Invariant of first component: %s..." % invar[:400])
-    else:
-        print("Invariant of first component: %s" % invar)
+    suffix = "[...]" if len(invar) > 400 else ""
+    print("Invariant of first component: '%s%s'" % (invar[:400], suffix))
