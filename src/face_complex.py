@@ -313,30 +313,30 @@ if __name__ == '__main__':
     complex = Complex(
         [ [ v for v in f['vertices'] ] for f in data['faces'] ]
     )
+    topologies: dict[str, list[list[VertexList]]] = {}
+    for c in components(complex):
+        topologies.setdefault(c.invariant, []).append(c.vertexOrders)
 
-    comps = list(components(complex))
-    print("%d components" % len(comps))
+    nrTypes = len(topologies)
+    nrComponents = sum(len(val) for val in topologies.values())
+    print("%d topologies and %d components" % (nrTypes, nrComponents))
     print()
 
-    assert(complex.nrFaces == sum(c.nrFaces for c in comps))
-
-    print("Fingerprints:")
-    for c in comps:
-        print("  %s" % c.fingerprint)
-    print()
-
-    symcounts = [len(c.optimalTraversals) for c in comps]
+    symcounts = [
+        [len(vs) for vs in val] for val in topologies.values()
+    ]
     print("Symmetry counts: %s" % " ".join(map(str, symcounts)))
     print()
 
     print("Vertex orders:")
-    for c in comps:
-        for vs in c.vertexOrders:
-            suffix = " ..." if len(vs) > 11 else ""
-            print("  %s%s" % (" ".join(map(str, vs[1:11])), suffix))
-        print()
+    for val in topologies.values():
+        for inst in val:
+            for vs in inst:
+                suffix = " ..." if len(vs) > 11 else ""
+                print("  %s%s" % (" ".join(map(str, vs[1:11])), suffix))
+            print()
     print()
 
-    invar = comps[0].invariant
+    invar = list(topologies.keys())[0]
     suffix = "[...]" if len(invar) > 400 else ""
     print("Invariant of first component: '%s%s'" % (invar[:400], suffix))
