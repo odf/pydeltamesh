@@ -6,7 +6,9 @@ T = TypeVar('T')
 
 # -- Simple type aliases
 
-FaceList = list[list[int]]
+VertexList = list[int]
+Face = list[int]
+FaceList = list[Face]
 OrientedEdge = tuple[int, int]
 Location = tuple[int, int]
 
@@ -37,7 +39,7 @@ class BufferedIterator(Generic[T]):
         return self._buffer[:]
 
 
-Traversal = BufferedIterator[tuple[list[int], list[int]]]
+Traversal = BufferedIterator[tuple[Face, Face]]
 
 
 
@@ -65,7 +67,7 @@ class Complex(object):
     def vertexDegree(self, v: int) -> int:
         return self._degrees[v]
 
-    def faceVertices(self, f: int) -> list[int]:
+    def faceVertices(self, f: int) -> Face:
         return self._faces[f]
 
     def faceNeighbors(self, f: int) -> list[Optional[Location]]:
@@ -80,7 +82,7 @@ class Component(object):
         self._optimalTraversals: Optional[list[Traversal]] = None
         self._invariant: Optional[str] = None
         self._fingerprint: Optional[str] = None
-        self._vertexOrders: Optional[list[list[int]]] = None
+        self._vertexOrders: Optional[list[VertexList]] = None
 
     @property
     def nrFaces(self) -> int:
@@ -116,10 +118,11 @@ class Component(object):
         return self._fingerprint
 
     @property
-    def vertexOrders(self) -> list[list[int]]:
+    def vertexOrders(self) -> list[VertexList]:
         if self._vertexOrders is None:
-            self._vertexOrders = map(_vertexOrder, self.optimalTraversals)
-
+            self._vertexOrders = [
+                _vertexOrder(t) for t in self.optimalTraversals
+            ]
         return self._vertexOrders
 
 
@@ -210,7 +213,7 @@ def _optimalTraversals(component: Component) -> list[Traversal]:
     return result
 
 
-def _startCandidates(component: Component) -> list[tuple[int, int]]:
+def _startCandidates(component: Component) -> list[Location]:
     complex = component.complex
 
     cost: dict[int, int] = {}
@@ -221,7 +224,7 @@ def _startCandidates(component: Component) -> list[tuple[int, int]]:
 
     d = min((c, i) for i, c in cost.items())[1]
 
-    result: list[tuple[int, int]] = []
+    result: list[Location] = []
 
     for f in component.faceIndices:
         vs = complex.faceVertices(f)
@@ -236,7 +239,7 @@ def _startCandidates(component: Component) -> list[tuple[int, int]]:
 def _traverseAndRenumber(
     complex: Complex, startFace: int, startOffset: int
 ) -> Iterator [
-    tuple[list[int], list[int]]
+    tuple[Face, Face]
 ]:
     vertexReIndex: dict[int, int] = {}
     nextVertex = 1
@@ -263,7 +266,7 @@ def _traverseAndRenumber(
         yield vs, [vertexReIndex[v] for v in vs]
 
 
-def _vertexOrder(traversal: Traversal) -> list[int]:
+def _vertexOrder(traversal: Traversal) -> VertexList:
     faceData = traversal.result()
     vMax = max(max(f) for _, f in faceData)
 
@@ -287,7 +290,7 @@ def _rotate(i: int, items: list[T]) -> list[T]:
 
 # -- Display via Polyscope
 
-def display(vertices: list[list[float]], faceIndices: list[list[int]]):
+def display(vertices: list[list[float]], faceIndices: FaceList):
     import numpy as np
     import polyscope as ps # type: ignore
 
