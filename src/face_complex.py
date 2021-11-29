@@ -127,6 +127,13 @@ class Component(object):
 
 
 
+class Topology(dict[str, list[list[VertexList]]]):
+    def __init__(self, faces: FaceList):
+        for c in components(Complex(faces)):
+            self.setdefault(c.invariant, []).append(c.vertexOrders)
+
+
+
 # -- High level functions
 
 def components(complex: Complex) -> Iterator[Component]:
@@ -310,26 +317,20 @@ if __name__ == '__main__':
     with open(sys.argv[1]) as fp:
         data = obj.load(fp)
 
-    complex = Complex(
-        [ [ v for v in f['vertices'] ] for f in data['faces'] ]
-    )
-    topologies: dict[str, list[list[VertexList]]] = {}
-    for c in components(complex):
-        topologies.setdefault(c.invariant, []).append(c.vertexOrders)
+    faces = [ [ v for v in f['vertices'] ] for f in data['faces'] ]
+    topo = Topology(faces)
 
-    nrTypes = len(topologies)
-    nrComponents = sum(len(val) for val in topologies.values())
+    nrTypes = len(topo)
+    nrComponents = sum(len(val) for val in topo.values())
     print("%d topologies and %d components" % (nrTypes, nrComponents))
     print()
 
-    symcounts = [
-        [len(vs) for vs in val] for val in topologies.values()
-    ]
+    symcounts = [[len(vs) for vs in val] for val in topo.values()]
     print("Symmetry counts: %s" % " ".join(map(str, symcounts)))
     print()
 
     print("Vertex orders:")
-    for val in topologies.values():
+    for val in topo.values():
         for inst in val:
             for vs in inst:
                 suffix = " ..." if len(vs) > 11 else ""
@@ -337,6 +338,6 @@ if __name__ == '__main__':
             print()
     print()
 
-    invar = list(topologies.keys())[0]
+    invar = list(topo.keys())[0]
     suffix = "[...]" if len(invar) > 400 else ""
     print("Invariant of first component: '%s%s'" % (invar[:400], suffix))
