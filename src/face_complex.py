@@ -129,14 +129,14 @@ class Component(object):
 
 class Topology(dict[str, list[list[VertexList]]]):
     def __init__(self, faces: FaceList):
-        for c in components(Complex(faces)):
+        for c in _components(Complex(faces)):
             self.setdefault(c.invariant, []).append(c.vertexOrders)
 
 
 
-# -- High level functions
+# -- High level helper functions
 
-def components(complex: Complex) -> Iterator[Component]:
+def _components(complex: Complex) -> Iterator[Component]:
     seen: set[int] = set()
 
     for f0 in range(complex.nrFaces):
@@ -158,8 +158,6 @@ def components(complex: Complex) -> Iterator[Component]:
 
             yield Component(complex, queue)
 
-
-# -- Mid level helper functions
 
 def _faceNeighbors(faces: FaceList) -> list[list[Optional[Location]]]:
     edgeLocation: dict[OrientedEdge, Location] = {}
@@ -295,7 +293,39 @@ def _rotate(i: int, items: list[T]) -> list[T]:
     return items[i:] + items[:i]
 
 
-# -- Display via Polyscope
+# -- Main API and utility functions
+
+def compare(base: Topology, morph: Topology):
+    for k in morph:
+        if base.get(k) is None:
+            print("Morph component not found in base")
+        else:
+            basePart = base[k]
+            morphPart = morph[k]
+
+            if len(basePart) < len(morphPart):
+                print("Morph component has more instances than base")
+
+    for k in base:
+        if morph.get(k) is None:
+            print("Base component not found in morph")
+        else:
+            basePart = base[k]
+            morphPart = morph[k]
+
+            if len(morphPart) < len(basePart):
+                print("Base component has more instances than morph")
+
+
+def loadAndProcessMesh(path):
+    with open(path) as fp:
+        data = obj.load(fp, path)
+
+    faces = [ [ v for v in f['vertices'] ] for f in data['faces'] ]
+    topo = Topology(faces)
+
+    return topo, data
+
 
 def display(vertices: list[list[float]], faceIndices: FaceList):
     import numpy as np
@@ -314,30 +344,23 @@ if __name__ == '__main__':
     import sys
     import obj
 
-    with open(sys.argv[1]) as fp:
-        data = obj.load(fp)
+    topoBase, dataBase = loadAndProcessMesh(sys.argv[1])
 
-    faces = [ [ v for v in f['vertices'] ] for f in data['faces'] ]
-    topo = Topology(faces)
-
-    nrTypes = len(topo)
-    nrComponents = sum(len(val) for val in topo.values())
-    print("%d topologies and %d components" % (nrTypes, nrComponents))
+    symcounts = [
+        [ [ len(vs) for vs in inst ] for inst in val ]
+        for val in topoBase.values()
+    ]
+    print("Counts for base: %s" % " ".join(map(str, symcounts)))
     print()
 
-    symcounts = [[len(vs) for vs in val] for val in topo.values()]
-    print("Symmetry counts: %s" % " ".join(map(str, symcounts)))
-    print()
+    if len(sys.argv) > 2:
+        topoMorph, dataMorph = loadAndProcessMesh(sys.argv[2])
 
-    print("Vertex orders:")
-    for val in topo.values():
-        for inst in val:
-            for vs in inst:
-                suffix = " ..." if len(vs) > 11 else ""
-                print("  %s%s" % (" ".join(map(str, vs[1:11])), suffix))
-            print()
-    print()
+        symcounts = [
+            [ [ len(vs) for vs in inst ] for inst in val ]
+            for val in topoMorph.values()
+        ]
+        print("Counts for morph: %s" % " ".join(map(str, symcounts)))
+        print()
 
-    invar = list(topo.keys())[0]
-    suffix = "[...]" if len(invar) > 400 else ""
-    print("Invariant of first component: '%s%s'" % (invar[:400], suffix))
+    compare(topoBase, topoMorph)
