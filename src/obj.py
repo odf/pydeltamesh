@@ -3,7 +3,10 @@ import numpy as np
 
 # -- Code for reading an .obj file
 
-def load(fp):
+def load(fp, path=None):
+    import os.path
+    dir = None if path is None else os.path.dirname(os.path.abspath(path))
+
     vertices = []
     normals = []
     texverts = []
@@ -26,8 +29,11 @@ def load(fp):
         pars = fields[1:]
 
         if cmd == 'mtllib':
-            # TODO if path is relative, start at .obj file path
-            with open(pars[0]) as f:
+            mtlpath = pars[0]
+            if os.path.dirname(mtlpath) == '' and dir is not None:
+                mtlpath = os.path.join(dir, mtlpath)
+
+            with open(mtlpath) as f:
                 loadmaterials(f, materials)
         elif cmd == 'v':
             vertices.append([float(pars[0]), float(pars[1]), float(pars[2])])
