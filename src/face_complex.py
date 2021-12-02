@@ -1,6 +1,8 @@
 from hashlib import sha1
 from typing import Generic, Iterator, Optional, TypeVar
 
+import numpy as np
+
 T = TypeVar('T')
 
 
@@ -295,26 +297,40 @@ def _rotate(i: int, items: list[T]) -> list[T]:
 
 # -- Main API and utility functions
 
-def compare(base: Topology, morph: Topology):
-    for k in morph:
-        if base.get(k) is None:
-            print("Morph component not found in base")
-        else:
-            basePart = base[k]
-            morphPart = morph[k]
+def compare(base: Topology, morph: Topology, metric=None):
+    for i, key in enumerate(morph.keys()):
+        print("Component %d:" % i)
 
-            if len(basePart) < len(morphPart):
-                print("Morph component has more instances than base")
+        morphPart = morph.get(key, [])
+        basePart = base.get(key, [])
 
-    for k in base:
-        if morph.get(k) is None:
-            print("Base component not found in morph")
-        else:
-            basePart = base[k]
-            morphPart = morph[k]
+        print("  %d vertices" % len(morphPart[0][0]))
+        print()
 
-            if len(morphPart) < len(basePart):
-                print("Base component has more instances than morph")
+        if len(basePart) > 0:
+            for j, morphInst in enumerate(morphPart):
+                print("  Morph instance %d:" % j)
+
+                for k, baseInst in enumerate(basePart):
+                    print("    Base instance %d" % k)
+
+                    for nu, baseOrder in enumerate(baseInst):
+                        print("      %s" % metric(morphInst[0], baseOrder))
+
+                    print()
+            print()
+
+        print()
+
+
+def sumOfSquaresMetric(baseVerts: np.ndarray, morphVerts: np.ndarray):
+    def fn(baseIndices: list[int], morphIndices: list[int]):
+        basePos = baseVerts[np.array(baseIndices) - 1]
+        morphPos = morphVerts[np.array(morphIndices) - 1]
+
+        return (np.sum((basePos - morphPos)**2) / len(basePos))**0.5
+
+    return fn
 
 
 def loadAndProcessMesh(path):
@@ -363,4 +379,5 @@ if __name__ == '__main__':
         print("Counts for morph: %s" % " ".join(map(str, symcounts)))
         print()
 
-    compare(topoBase, topoMorph)
+    metric = sumOfSquaresMetric(dataBase["vertices"], dataMorph["vertices"])
+    compare(topoBase, topoMorph, metric)
