@@ -277,10 +277,10 @@ def _vertexOrder(traversal: Traversal) -> VertexList:
     faceData = traversal.result()
     vMax = max(max(f) for _, f in faceData)
 
-    result = [0] * (vMax + 1)
+    result = [0] * vMax
     for fOld, fNew in faceData:
         for v, w in zip(fOld, fNew):
-            result[w] = v
+            result[w - 1] = v
 
     return result
 
@@ -314,8 +314,8 @@ def compare(base: Topology, morph: Topology, metric=None):
                 for k, baseInst in enumerate(basePart):
                     print("    Base instance %d" % k)
 
-                    for nu, baseOrder in enumerate(baseInst):
-                        print("      %s" % metric(morphInst[0], baseOrder))
+                    for baseOrder in baseInst:
+                        print("      %s" % metric(baseOrder, morphInst[0]))
 
                     print()
             print()
