@@ -312,10 +312,13 @@ def compare(base: Topology, morph: Topology, metric=None):
                 print("  Morph instance %d:" % j)
 
                 for k, baseInst in enumerate(basePart):
-                    print("    Base instance %d" % k)
+                    print("    Base instance %d:" % k)
 
-                    for baseOrder in baseInst:
-                        print("      %s" % metric(baseOrder, morphInst[0]))
+                    costs = [
+                        metric(baseOrder, morphInst[0])
+                        for baseOrder in baseInst
+                    ]
+                    print("      %s" % min(costs))
 
                     print()
             print()
