@@ -343,13 +343,19 @@ def loadAndProcessMesh(path):
     return topo, data
 
 
-def display(vertices: list[list[float]], faceIndices: FaceList):
+def display(*meshes):
     import numpy as np
     import polyscope as ps # type: ignore
 
     ps.init()
 
-    ps.register_surface_mesh("mesh", np.array(vertices), faceIndices)
+    for i in range(len(meshes)):
+        mesh = meshes[i]
+        ps.register_surface_mesh(
+            "mesh_%02d" % i,
+            np.array(mesh["vertices"]),
+            [ [ v - 1 for v in f["vertices"] ] for f in mesh["faces"] ]
+        )
 
     ps.show()
 
@@ -381,3 +387,5 @@ if __name__ == '__main__':
 
     metric = sumOfSquaresMetric(dataBase["vertices"], dataMorph["vertices"])
     compare(topoBase, topoMorph, metric)
+
+    #display(dataBase, dataMorph)
