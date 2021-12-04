@@ -297,49 +297,44 @@ def _rotate(i: int, items: list[T]) -> list[T]:
 
 # -- Main API and utility functions
 
-def compare(base: Topology, morph: Topology, metric=None):
+def match(topoA: Topology, topoB: Topology, metric=None):
     from scipy.optimize import linear_sum_assignment
 
-    for i, key in enumerate(morph.keys()):
-        print("Component %d:" % i)
+    matchedVerticesInA = []
+    matchedVerticesInB = []
 
-        morphPart = morph.get(key, [])
-        basePart = base.get(key, [])
+    for key in topoA.keys():
+        compA = topoA.get(key, [])
+        compB = topoB.get(key, [])
 
-        print("  %d vertices" % len(morphPart[0][0]))
-        print()
+        if len(compB) > 0:
+            M = np.zeros((len(compA), len(compB)))
 
-        if len(basePart) > 0:
-            M = np.zeros((len(basePart), len(morphPart)))
-
-            for j, morphInst in enumerate(morphPart):
-                print("  Morph instance %d:" % j)
-
-                for k, baseInst in enumerate(basePart):
-                    print("    Base instance %d:" % k)
-
-                    costs = [
-                        metric(baseOrder, morphInst[0])
-                        for baseOrder in baseInst
-                    ]
-                    print("      %s" % min(costs))
+            for j, instA in enumerate(compA):
+                for k, instB in enumerate(compB):
+                    costs = [ metric(instA[0], orderB) for orderB in instB ]
                     M[j, k] = min(costs)
 
-                    print()
-
             assignment = np.transpose(linear_sum_assignment(M))
-            print("  Optimal assignment: %s" % assignment.tolist())
-            print()
 
-        print()
+            for j, k in assignment:
+                instA = compA[j]
+                instB = compB[k]
+                # TODO avoid recomputing this?
+                costs = [ metric(instA[0], orderB) for orderB in instB ]
+
+                matchedVerticesInA.extend(compA[j][0])
+                matchedVerticesInB.extend(compB[k][np.argmin(costs)])
+
+    return np.transpose((matchedVerticesInA, matchedVerticesInB))
 
 
-def sumOfSquaresMetric(baseVerts: np.ndarray, morphVerts: np.ndarray):
-    def fn(baseIndices: list[int], morphIndices: list[int]):
-        basePos = baseVerts[np.array(baseIndices) - 1]
-        morphPos = morphVerts[np.array(morphIndices) - 1]
+def sumOfSquaresMetric(vertsA: np.ndarray, vertsB: np.ndarray):
+    def fn(idcsA: list[int], idcsB: list[int]):
+        posA = vertsA[np.array(idcsA) - 1]
+        posB = vertsB[np.array(idcsB) - 1]
 
-        return (np.sum((basePos - morphPos)**2) / len(basePos))**0.5
+        return (np.sum((posA - posB)**2) / len(posA))**0.5
 
     return fn
 
@@ -397,6 +392,20 @@ if __name__ == '__main__':
         print()
 
     metric = sumOfSquaresMetric(dataBase["vertices"], dataMorph["vertices"])
-    compare(topoBase, topoMorph, metric)
+    mapping = match(topoBase, topoMorph, metric)
 
-    #display(dataBase, dataMorph)
+    print("Mapping (of %d vertices):\n%s" % (len(mapping), mapping))
+
+    vertsIn = dataBase["vertices"]
+    vertsOut = vertsIn.copy()
+    vertsMorph = dataMorph["vertices"]
+
+    for v, w in mapping:
+        vertsOut[v - 1] = vertsMorph[w - 1]
+
+    '''
+    display(
+        { "vertices": vertsIn - [0.1, 0.0, 0.0], "faces": dataBase["faces"] },
+        { "vertices": vertsOut, "faces": dataBase["faces"] }
+    )
+    '''
