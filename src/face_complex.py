@@ -298,6 +298,8 @@ def _rotate(i: int, items: list[T]) -> list[T]:
 # -- Main API and utility functions
 
 def compare(base: Topology, morph: Topology, metric=None):
+    from scipy.optimize import linear_sum_assignment
+
     for i, key in enumerate(morph.keys()):
         print("Component %d:" % i)
 
@@ -308,6 +310,8 @@ def compare(base: Topology, morph: Topology, metric=None):
         print()
 
         if len(basePart) > 0:
+            M = np.zeros((len(basePart), len(morphPart)))
+
             for j, morphInst in enumerate(morphPart):
                 print("  Morph instance %d:" % j)
 
@@ -319,8 +323,12 @@ def compare(base: Topology, morph: Topology, metric=None):
                         for baseOrder in baseInst
                     ]
                     print("      %s" % min(costs))
+                    M[j, k] = min(costs)
 
                     print()
+
+            assignment = np.transpose(linear_sum_assignment(M))
+            print("  Optimal assignment: %s" % assignment.tolist())
             print()
 
         print()
