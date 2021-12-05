@@ -396,8 +396,10 @@ if __name__ == '__main__':
 
     print("Mapping (of %d vertices):\n%s" % (len(mapping), mapping))
 
-    vertsIn = dataBase["vertices"]
-    vertsOut = vertsIn.copy()
+    dataOut = dataBase.copy()
+    dataOut["vertices"] = dataOut["vertices"].copy()
+
+    vertsOut = dataOut["vertices"]
     vertsMorph = dataMorph["vertices"]
 
     for v, w in mapping:
@@ -409,3 +411,6 @@ if __name__ == '__main__':
         { "vertices": vertsOut, "faces": dataBase["faces"] }
     )
     '''
+
+    with open("test.obj", "w") as fp:
+        obj.save(fp, dataOut, "test.mtl")

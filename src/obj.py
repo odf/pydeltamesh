@@ -1,8 +1,6 @@
 import numpy as np
 
 
-# -- Code for reading an .obj file
-
 def load(fp, path=None):
     import os.path
     dir = None if path is None else os.path.dirname(os.path.abspath(path))
@@ -79,6 +77,52 @@ def load(fp, path=None):
     }
 
 
+def save(fp, mesh, mtlpath = None):
+    if mtlpath is not None:
+        with open(mtlpath, "w") as f:
+            savematerials(f, mesh["materials"])
+        fp.write("mtllib %s\n" % mtlpath)
+
+    for v in mesh["vertices"]:
+        fp.write("v %.8f %.8f %.8f\n" % tuple(v))
+    for v in mesh["normals"]:
+        fp.write("vn %.8f %.8f %.8f\n" % tuple(v))
+    for v in mesh["texverts"]:
+        fp.write("vt %.8f %.8f\n" % tuple(v))
+
+    for mat in mesh["materials"]:
+        fp.write("usemtl %s\n" % mat)
+
+    last_object = last_group = last_material = last_smoothinggroup = None
+
+    for f in mesh["faces"]:
+        if f["object"] != last_object:
+            last_object = f["object"]
+            fp.write("o %s\n" % last_object)
+        if f["group"] != last_group:
+            last_group = f["group"]
+            fp.write("g %s\n" % last_group)
+        if f["material"] != last_material:
+            last_material = f["material"]
+            fp.write("usemtl %s\n" % last_material)
+        if f["smoothinggroup"] != last_smoothinggroup:
+            last_smoothinggroup = f["smoothinggroup"]
+            fp.write("s %s\n" % last_smoothinggroup)
+
+        v = f["vertices"]
+        vn = f["normals"]
+        vt = f["texverts"]
+
+        fp.write("f")
+        for i in range(max(len(v), len(vn), len(vt))):
+            fp.write(" %s/%s/%s" % (
+                v[i] if i < len(v) else "",
+                vt[i] if i < len(vt) else "",
+                vn[i] if i < len(vn) else "",
+            ))
+        fp.write("\n")
+
+
 def loadmaterials(fp, target):
     material = None
 
@@ -95,3 +139,11 @@ def loadmaterials(fp, target):
             target.setdefault(material, [])
         else:
             target[material].append(line)
+
+
+def savematerials(fp, materials):
+    for mat in materials:
+        fp.write("newmtl %s\n" % mat)
+
+        for line in materials[mat]:
+            fp.write("%s\n" % line)
