@@ -1,4 +1,3 @@
-from hashlib import sha1
 from typing import Generic, Iterator, Optional, TypeVar
 
 import numpy as np
@@ -52,15 +51,6 @@ class Complex(object):
         self._faces = faces
         self._neighbors = _faceNeighbors(faces)
         self._degrees = _vertexDegrees(faces)
-        self._vertices = [v for v, m in enumerate(self._degrees) if m > 0]
-
-    @property
-    def nrVertices(self) -> int:
-        return len(self._vertices)
-
-    @property
-    def vertices(self) -> Iterator[int]:
-        return iter(self._vertices)
 
     @property
     def nrFaces(self) -> int:
@@ -83,12 +73,7 @@ class Component(object):
         self._faceIndices = faceIndices
         self._optimalTraversals: Optional[list[Traversal]] = None
         self._invariant: Optional[str] = None
-        self._fingerprint: Optional[str] = None
         self._vertexOrders: Optional[list[VertexList]] = None
-
-    @property
-    def nrFaces(self) -> int:
-        return len(self._faceIndices)
 
     @property
     def complex(self) -> Complex:
@@ -112,12 +97,6 @@ class Component(object):
                 for _, f in self.optimalTraversals[0].result()
             ])
         return self._invariant
-
-    @property
-    def fingerprint(self) -> str:
-        if self._fingerprint is None:
-            self._fingerprint = sha1(str.encode(self.invariant)).hexdigest()
-        return self._fingerprint
 
     @property
     def vertexOrders(self) -> list[VertexList]:
