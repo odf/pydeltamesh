@@ -130,10 +130,14 @@ class Component(object):
 
 
 class Topology(dict[str, list[list[VertexList]]]):
-    def __init__(self, faces: FaceList):
+    def __init__(self, faces: FaceList, vertices: np.ndarray):
+        self._vertices = vertices
+
         for c in _components(Complex(faces)):
             self.setdefault(c.invariant, []).append(c.vertexOrders)
 
+    def vertexPositions(self, indices: list[int]):
+        return self._vertices[np.array(indices) - 1]
 
 
 # -- High level helper functions
@@ -300,6 +304,11 @@ def _rotate(i: int, items: list[T]) -> list[T]:
 def match(topoA: Topology, topoB: Topology, metric=None):
     from scipy.optimize import linear_sum_assignment
 
+    if metric is None:
+        metric = lambda idcsA, idcsB: np.sum((
+            topoA.vertexPositions(idcsA) - topoB.vertexPositions(idcsB)
+        )**2)
+
     matchedVerticesInA = []
     matchedVerticesInB = []
 
@@ -329,22 +338,14 @@ def match(topoA: Topology, topoB: Topology, metric=None):
     return np.transpose((matchedVerticesInA, matchedVerticesInB))
 
 
-def sumOfSquaresMetric(vertsA: np.ndarray, vertsB: np.ndarray):
-    def fn(idcsA: list[int], idcsB: list[int]):
-        posA = vertsA[np.array(idcsA) - 1]
-        posB = vertsB[np.array(idcsB) - 1]
-
-        return (np.sum((posA - posB)**2) / len(posA))**0.5
-
-    return fn
-
-
 def loadAndProcessMesh(path):
     with open(path) as fp:
         data = obj.load(fp, path)
 
-    faces = [ [ v for v in f['vertices'] ] for f in data['faces'] ]
-    topo = Topology(faces)
+    topo = Topology(
+        [ f["vertices"] for f in data["faces"] ],
+        data["vertices"]
+    )
 
     return topo, data
 
@@ -391,14 +392,13 @@ if __name__ == '__main__':
         print("Counts for morph: %s" % " ".join(map(str, symcounts)))
         print()
 
-    metric = sumOfSquaresMetric(dataBase["vertices"], dataMorph["vertices"])
-    mapping = match(topoBase, topoMorph, metric)
-
+    mapping = match(topoBase, topoMorph)
     print("Mapping (of %d vertices):\n%s" % (len(mapping), mapping))
 
     dataOut = dataBase.copy()
     dataOut["vertices"] = dataOut["vertices"].copy()
 
+    vertsIn = dataBase["vertices"]
     vertsOut = dataOut["vertices"]
     vertsMorph = dataMorph["vertices"]
 
@@ -410,7 +410,7 @@ if __name__ == '__main__':
         { "vertices": vertsIn - [0.1, 0.0, 0.0], "faces": dataBase["faces"] },
         { "vertices": vertsOut, "faces": dataBase["faces"] }
     )
-    '''
+    #'''
 
     with open("test.obj", "w") as fp:
         obj.save(fp, dataOut, "test.mtl")
