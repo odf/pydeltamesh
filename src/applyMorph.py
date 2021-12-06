@@ -25,7 +25,7 @@ def run():
     vertsMorph = dataMorph["vertices"]
 
     for v, w in mapping:
-        vertsOut[v - 1] = vertsMorph[w - 1]
+        vertsOut[v] = vertsMorph[w]
 
     if args.show:
         vertsIn = dataBase["vertices"]
@@ -110,7 +110,7 @@ def display(*meshes):
         ps.register_surface_mesh(
             "mesh_%02d" % i,
             np.array(mesh["vertices"]),
-            [ [ v - 1 for v in f["vertices"] ] for f in mesh["faces"] ]
+            [ f["vertices"] for f in mesh["faces"] ]
         )
 
     ps.show()

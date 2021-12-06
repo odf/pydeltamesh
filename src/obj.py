@@ -54,9 +54,9 @@ def load(fp, path=None):
 
             for i in range(len(pars)):
                 v, vt, vn = map(int, (pars[i] + '/0/0').split('/')[:3])
-                fv.append(v + (len(vertices) + 1 if v < 0 else 0))
-                ft.append(vt + (len(texverts) + 1 if vt < 0 else 0))
-                fn.append(vn + (len(normals) + 1 if vn < 0 else 0))
+                fv.append(v + (len(vertices) if v < 0 else -1))
+                ft.append(vt + (len(texverts) if vt < 0 else -1))
+                fn.append(vn + (len(normals) if vn < 0 else -1))
 
             faces.append({
                 'vertices': fv,
@@ -116,9 +116,9 @@ def save(fp, mesh, mtlpath = None):
         fp.write("f")
         for i in range(max(len(v), len(vn), len(vt))):
             fp.write(" %s/%s/%s" % (
-                v[i] if i < len(v) else "",
-                vt[i] if i < len(vt) else "",
-                vn[i] if i < len(vn) else "",
+                v[i] + 1 if i < len(v) else "",
+                vt[i] + 1 if i < len(vt) else "",
+                vn[i] + 1 if i < len(vn) else "",
             ))
         fp.write("\n")
 

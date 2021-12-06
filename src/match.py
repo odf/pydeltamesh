@@ -137,7 +137,7 @@ class Topology(dict[str, list[list[VertexList]]]):
             self.setdefault(c.invariant, []).append(c.vertexOrders)
 
     def vertexPositions(self, indices: list[int]):
-        return self._vertices[np.array(indices) - 1]
+        return self._vertices[np.array(indices)]
 
 
 # -- High level helper functions
