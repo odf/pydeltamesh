@@ -5,3 +5,4 @@ imgui.ini
 /.polyscope.ini
 __pycache__
 prof.out
+*.pyc
