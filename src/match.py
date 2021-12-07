@@ -1,22 +1,8 @@
-from typing import Generic, Iterator, Optional, TypeVar
-
 import numpy as np
-
-T = TypeVar('T')
-
-
-# -- Simple type aliases
-
-VertexList = list[int]
-Face = list[int]
-FaceList = list[Face]
-OrientedEdge = tuple[int, int]
-Location = tuple[int, int]
-
 
 # -- Helper types
 
-class BufferedIterator(Generic[T]):
+class BufferedIterator(object):
     def __init__(self, gen):
         self._gen = gen
         self._buffer = []
@@ -40,57 +26,53 @@ class BufferedIterator(Generic[T]):
         return self._buffer[:]
 
 
-Traversal = BufferedIterator[tuple[Face, Face]]
-
-
-
 # -- Core data types
 
 class Complex(object):
-    def __init__(self, faces: FaceList):
+    def __init__(self, faces):
         self._faces = faces
         self._neighbors = _faceNeighbors(faces)
         self._degrees = _vertexDegrees(faces)
 
     @property
-    def nrFaces(self) -> int:
+    def nrFaces(self):
         return len(self._faces)
 
-    def vertexDegree(self, v: int) -> int:
+    def vertexDegree(self, v):
         return self._degrees[v]
 
-    def faceVertices(self, f: int) -> Face:
+    def faceVertices(self, f):
         return self._faces[f]
 
-    def faceNeighbors(self, f: int) -> list[Optional[Location]]:
+    def faceNeighbors(self, f):
         return self._neighbors[f]
 
 
 
 class Component(object):
-    def __init__(self, complex: Complex, faceIndices: list[int]):
+    def __init__(self, complex, faceIndices):
         self._complex = complex
         self._faceIndices = faceIndices
-        self._optimalTraversals: Optional[list[Traversal]] = None
-        self._invariant: Optional[str] = None
-        self._vertexOrders: Optional[list[VertexList]] = None
+        self._optimalTraversals = None
+        self._invariant = None
+        self._vertexOrders = None
 
     @property
-    def complex(self) -> Complex:
+    def complex(self):
         return self._complex
 
     @property
-    def faceIndices(self) -> Iterator[int]:
+    def faceIndices(self):
         return iter(self._faceIndices)
 
     @property
-    def optimalTraversals(self) -> list[Traversal]:
+    def optimalTraversals(self):
         if self._optimalTraversals is None:
             self._optimalTraversals = _optimalTraversals(self)
         return self._optimalTraversals
 
     @property
-    def invariant(self) -> str:
+    def invariant(self):
         if self._invariant is None:
             self._invariant = " ".join([
                 " ".join(map(str, f)) + " 0"
@@ -99,7 +81,7 @@ class Component(object):
         return self._invariant
 
     @property
-    def vertexOrders(self) -> list[VertexList]:
+    def vertexOrders(self):
         if self._vertexOrders is None:
             self._vertexOrders = [
                 _vertexOrder(t) for t in self.optimalTraversals
@@ -108,21 +90,21 @@ class Component(object):
 
 
 
-class Topology(dict[str, list[list[VertexList]]]):
-    def __init__(self, faces: FaceList, vertices: np.ndarray):
+class Topology(dict):
+    def __init__(self, faces, vertices):
         self._vertices = vertices
 
         for c in _components(Complex(faces)):
             self.setdefault(c.invariant, []).append(c.vertexOrders)
 
-    def vertexPositions(self, indices: list[int]):
+    def vertexPositions(self, indices):
         return self._vertices[np.array(indices)]
 
 
 # -- High level helper functions
 
-def _components(complex: Complex) -> Iterator[Component]:
-    seen: set[int] = set()
+def _components(complex):
+    seen = set()
 
     for f0 in range(complex.nrFaces):
         if not f0 in seen:
@@ -144,8 +126,8 @@ def _components(complex: Complex) -> Iterator[Component]:
             yield Component(complex, queue)
 
 
-def _faceNeighbors(faces: FaceList) -> list[list[Optional[Location]]]:
-    edgeLocation: dict[OrientedEdge, Location] = {}
+def _faceNeighbors(faces):
+    edgeLocation = {}
 
     for i, face in enumerate(faces):
         for k, (v, w) in enumerate(_cyclicPairs(face)):
@@ -160,7 +142,7 @@ def _faceNeighbors(faces: FaceList) -> list[list[Optional[Location]]]:
     ]
 
 
-def _vertexDegrees(faces: FaceList) -> list[int]:
+def _vertexDegrees(faces):
     maxVertex = max(max(f) for f in faces)
     degree = [0] * (maxVertex + 1)
 
@@ -171,12 +153,12 @@ def _vertexDegrees(faces: FaceList) -> list[int]:
     return degree
 
 
-def _optimalTraversals(component: Component) -> list[Traversal]:
-    best: Optional[Traversal] = None
-    result: list[Traversal] = []
+def _optimalTraversals(component):
+    best = None
+    result = []
 
     for start in _startCandidates(component):
-        candidate: Traversal = BufferedIterator(
+        candidate = BufferedIterator(
             _traverseAndRenumber(component.complex, *start)
         )
         if best is None:
@@ -203,10 +185,10 @@ def _optimalTraversals(component: Component) -> list[Traversal]:
     return result
 
 
-def _startCandidates(component: Component) -> list[Location]:
+def _startCandidates(component):
     complex = component.complex
 
-    cost: dict[int, int] = {}
+    cost = {}
     for f in component.faceIndices:
         for v in complex.faceVertices(f):
             d = complex.vertexDegree(v)
@@ -214,7 +196,7 @@ def _startCandidates(component: Component) -> list[Location]:
 
     d = min((c, i) for i, c in cost.items())[1]
 
-    result: list[Location] = []
+    result = []
 
     for f in component.faceIndices:
         vs = complex.faceVertices(f)
@@ -227,11 +209,9 @@ def _startCandidates(component: Component) -> list[Location]:
 
 
 def _traverseAndRenumber(
-    complex: Complex, startFace: int, startOffset: int
-) -> Iterator [
-    tuple[Face, Face]
-]:
-    vertexReIndex: dict[int, int] = {}
+    complex, startFace, startOffset
+):
+    vertexReIndex = {}
     nextVertex = 1
     queue = [(startFace, startOffset)]
     seen = set([startFace])
@@ -256,7 +236,7 @@ def _traverseAndRenumber(
         yield vs, [vertexReIndex[v] for v in vs]
 
 
-def _vertexOrder(traversal: Traversal) -> VertexList:
+def _vertexOrder(traversal):
     faceData = traversal.result()
     vMax = max(max(f) for _, f in faceData)
 
@@ -270,21 +250,21 @@ def _vertexOrder(traversal: Traversal) -> VertexList:
 
 # -- Low level helper functions
 
-def _cyclicPairs(indices: list[T]) -> Iterator[tuple[T, T]]:
+def _cyclicPairs(indices):
     return zip(indices, _rotate(1, indices))
 
 
-def _rotate(i: int, items: list[T]) -> list[T]:
+def _rotate(i, items):
     return items[i:] + items[:i]
 
 
 # -- API functions
 
-def topology(faces: FaceList, vertices: np.ndarray):
+def topology(faces, vertices):
     return Topology(faces, vertices)
 
 
-def match(topoA: Topology, topoB: Topology, metric=None):
+def match(topoA, topoB, metric=None):
     from scipy.optimize import linear_sum_assignment
 
     if metric is None:
