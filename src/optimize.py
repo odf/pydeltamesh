@@ -16,7 +16,7 @@ def _fordFulkersonResidual(capacity, source, sink):
             v = queue.pop(0)
 
             for w, c in residual[v].items():
-                if parent.get(w) is None and c > 0:
+                if c > 0 and not w in parent:
                     parent[w] = v
 
                     if w == sink:
@@ -61,6 +61,25 @@ def maxFlow(capacity, residual):
     ]
 
 
+def minCut(capacity, residual, source):
+    reached = set([source])
+    queue = [source]
+
+    while len(queue):
+        v = queue.pop(0)
+
+        for w, c in residual[v].items():
+            if c > 0 and not w in reached:
+                reached.add(w)
+                queue.append(w)
+
+    return [
+        (v, w, c)
+        for v, w, c in capacity
+        if v in reached and not w in reached
+    ]
+
+
 if __name__ == "__main__":
     import pprint
 
@@ -84,3 +103,6 @@ if __name__ == "__main__":
 
     print("\nMax flow:")
     pprint.pp(maxFlow(capacity, residual))
+
+    print("\nMin cut:")
+    pprint.pp(minCut(capacity, residual, "source"))
