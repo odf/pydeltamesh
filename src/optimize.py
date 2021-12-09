@@ -120,9 +120,22 @@ def _minCut(capacity, residual, source):
 
 
 def minimumWeightAssignment(weightMatrix):
-    M = _normalizedWeightMatrix(weightMatrix)
+    import numpy as np
+
+    M = np.array(weightMatrix, copy=True)
     nrows, ncols = M.shape
-    n = min(nrows, ncols)
+    n = max(nrows, ncols)
+
+    if nrows < n or ncols < n:
+        T = M
+        M = np.zeros_like(M, shape=(n, n))
+        M[:nrows, :ncols] = T
+
+    for i in range(n):
+        M[i, :] -= np.min(M[i, :])
+
+    for j in range(n):
+        M[:, j] -= np.min(M[:, j])
 
     while True:
         network = _coverageNetwork(M)
@@ -131,7 +144,7 @@ def minimumWeightAssignment(weightMatrix):
             return [
                 (i, j)
                 for ((r, i), (s, j), _) in network.maxFlow()
-                if r == 1 and s == 2
+                if r == 1 and s == 2 and i < nrows and j < ncols
             ]
         else:
             cut = network.minCut()
@@ -143,8 +156,8 @@ def minimumWeightAssignment(weightMatrix):
             )
             d = min(
                 M[i][j]
-                for i in range(nrows) if not i in rowsCovered
-                for j in range(ncols) if not j in colsCovered
+                for i in range(n) if not i in rowsCovered
+                for j in range(n) if not j in colsCovered
             )
 
             M -= d
@@ -152,21 +165,6 @@ def minimumWeightAssignment(weightMatrix):
                 M[i, :] += d
             for j in colsCovered:
                 M[:, j] += d
-
-
-def _normalizedWeightMatrix(weights):
-    import numpy as np
-
-    M = np.array(weights, copy=True)
-    nrows, ncols = M.shape
-
-    for i in range(nrows):
-        M[i, :] -= np.min(M[i, :])
-
-    for j in range(ncols):
-        M[:, j] -= np.min(M[:, j])
-
-    return M
 
 
 def _coverageNetwork(M):
