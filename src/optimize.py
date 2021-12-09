@@ -1,3 +1,42 @@
+class FordFulkerson(object):
+    def __init__(self, capacity, source, sink):
+        self._capacity = capacity
+        self._source = source
+        self._sink = sink
+        self._residual = None
+        self._maxFlow = None
+        self._minCut = None
+
+    @property
+    def capacity(self):
+        return self._capacity
+
+    @property
+    def source(self):
+        return self._source
+
+    @property
+    def sink(self):
+        return self._sink
+
+    def residual(self):
+        if self._residual is None:
+            self._residual = _fordFulkersonResidual(
+                self.capacity, self.source, self.sink
+            )
+        return self._residual
+
+    def maxFlow(self):
+        if self._maxFlow is None:
+            self._maxFlow = _maxFlow(self.capacity, self.residual())
+        return self._maxFlow
+
+    def minCut(self):
+        if self._minCut is None:
+            self._minCut = _minCut(self.capacity, self.residual(), self.source)
+        return self._minCut
+
+
 def _fordFulkersonResidual(capacity, source, sink):
     residual = {}
 
@@ -53,7 +92,7 @@ def _fordFulkersonResidual(capacity, source, sink):
     return residual
 
 
-def maxFlow(capacity, residual):
+def _maxFlow(capacity, residual):
     return [
         (v, w, c - residual[v][w])
         for v, w, c in capacity
@@ -61,7 +100,7 @@ def maxFlow(capacity, residual):
     ]
 
 
-def minCut(capacity, residual, source):
+def _minCut(capacity, residual, source):
     reached = set([source])
     queue = [source]
 
@@ -96,13 +135,13 @@ if __name__ == "__main__":
         ("r3", "sink", 1),
     ]
 
-    residual = _fordFulkersonResidual(capacity, "source", "sink")
+    network = FordFulkerson(capacity, "source", "sink")
 
     print("\nResidual:")
-    pprint.pp(residual)
+    pprint.pp(network.residual())
 
     print("\nMax flow:")
-    pprint.pp(maxFlow(capacity, residual))
+    pprint.pp(network.maxFlow())
 
     print("\nMin cut:")
-    pprint.pp(minCut(capacity, residual, "source"))
+    pprint.pp(network.minCut())
