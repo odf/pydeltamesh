@@ -38,15 +38,14 @@ class FlowNetwork(object):
 
 
 def _fordFulkersonResidual(capacity, source, sink):
+    # Initialize the residual network
     residual = {}
-
     for v, w, c in capacity:
         residual.setdefault(v, {})[w] = c
         residual.setdefault(w, {})[v] = 0
 
     while True:
         # Do a BFS to find an augmenting path
-
         parent = { source: None }
         queue = [source]
         success = False
@@ -65,12 +64,10 @@ def _fordFulkersonResidual(capacity, source, sink):
                         queue.append(w)
 
         # If no augmenting path was found, terminate
-
         if not success:
             break
 
         # Determine the capacity of the path
-
         path_capacity = float('inf')
         w = sink
         while w != source:
@@ -79,7 +76,6 @@ def _fordFulkersonResidual(capacity, source, sink):
             w = v
 
         # Update the residual network
-
         w = sink
         while w != source:
             v = parent[w]
@@ -88,7 +84,6 @@ def _fordFulkersonResidual(capacity, source, sink):
             w = v
 
     # Return the residual network - max flow and min cut can be derived
-
     return residual
 
 
