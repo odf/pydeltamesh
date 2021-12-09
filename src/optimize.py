@@ -195,39 +195,55 @@ def _coverageNetwork(M):
     return FordFulkerson(capacity, source, sink)
 
 
+def minimumWeightAssignmentBruteForce(weightMatrix):
+    nrows = len(weightMatrix)
+    ncols = len(weightMatrix[0])
+
+    if nrows > ncols:
+        import numpy as np
+        M = np.transpose(weightMatrix)
+        return [ (j, i) for i, j in minimumWeightAssignmentBruteForce(M) ]
+    else:
+        best = None
+
+        for a in _selections(range(ncols), nrows):
+            cost = sum(weightMatrix[i][a[i]] for i in range(nrows))
+            if best is None or cost < best[1]:
+                best = a, cost
+
+        a = best[0]
+        return [(i, a[i]) for i in range(nrows)]
+
+
+def _selections(a, n):
+    if n <= 0:
+        yield []
+    else:
+        a = list(a)
+        for i in range(len(a)):
+            for s in _selections(a[:i] + a[i + 1:], n - 1):
+                yield [a[i]] + s
+
+
+def _testMinimumWeightAssignment(weightMatrix):
+    def cost(assignment):
+        return sum(weightMatrix[i][j] for i, j in assignment)
+
+    expected = minimumWeightAssignmentBruteForce(weightMatrix)
+    found = minimumWeightAssignment(weightMatrix)
+
+    assert(cost(found) == cost(expected))
+
+
+def _runTest():
+    import numpy as np
+
+    for run in range(100):
+        nrows = 1 + np.random.randint(7)
+        ncols = 1 + np.random.randint(7)
+        weights = np.random.randint(100, size=(nrows, ncols))
+        _testMinimumWeightAssignment(weights)
+
+
 if __name__ == "__main__":
-    import pprint
-
-    capacity = [
-        ("source", "c1", 1),
-        ("source", "c2", 1),
-        ("source", "c3", 1),
-        ("c1", "r1", 1),
-        ("c1", "r2", 1),
-        ("c2", "r3", 1),
-        ("c3", "r3", 1),
-        ("r1", "sink", 1),
-        ("r2", "sink", 1),
-        ("r3", "sink", 1),
-    ]
-
-    network = FordFulkerson(capacity, "source", "sink")
-
-    print("\nResidual:")
-    pprint.pp(network.residual())
-
-    print("\nMax flow:")
-    pprint.pp(network.maxFlow())
-
-    print("\nMin cut:")
-    pprint.pp(network.minCut())
-
-    weights = [
-        [ 5, 7, 3, 9 ],
-        [ 4, 8, 2, 6 ],
-        [ 6, 6, 7, 5 ],
-        [ 9, 8, 4, 7 ]
-    ]
-
-    print("\nMinimal weight assignment:")
-    print(minimumWeightAssignment(weights))
+    _runTest()
