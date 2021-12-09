@@ -1,4 +1,4 @@
-class FordFulkerson(object):
+class FlowNetwork(object):
     def __init__(self, capacity, source, sink):
         self._capacity = capacity
         self._source = source
@@ -192,7 +192,7 @@ def _coverageNetwork(M):
         ]
     )
 
-    return FordFulkerson(capacity, source, sink)
+    return FlowNetwork(capacity, source, sink)
 
 
 def minimumWeightAssignmentBruteForce(weightMatrix):
