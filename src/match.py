@@ -265,7 +265,7 @@ def topology(faces, vertices):
 
 
 def match(topoA, topoB, metric=None):
-    from scipy.optimize import linear_sum_assignment
+    import optimize
 
     if metric is None:
         metric = lambda idcsA, idcsB: np.sum((
@@ -287,7 +287,7 @@ def match(topoA, topoB, metric=None):
                     costs = [ metric(instA[0], orderB) for orderB in instB ]
                     M[j, k] = min(costs)
 
-            assignment = np.transpose(linear_sum_assignment(M))
+            assignment = optimize.minimumWeightAssignment(M)
 
             for j, k in assignment:
                 instA = compA[j]
