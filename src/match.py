@@ -159,8 +159,8 @@ def _components(complex): # type: (Complex) -> Iterator[Component]
             yield Component(complex, queue)
 
 
-def _faceNeighbors(faces, vertices, verbose=False):
-    # type: (FaceList, np.ndarray, bool) -> dict[Location, Location]
+def _faceNeighbors(faces, vertices):
+    # type: (FaceList, np.ndarray) -> dict[Location, Location]
 
     faceNormals = [_normal(f, vertices) for f in faces]
 
@@ -176,26 +176,21 @@ def _faceNeighbors(faces, vertices, verbose=False):
     for v, w in edgeLocations:
         edgeDirection = _normalized(vertices[w] - vertices[v])
         locations = edgeLocations[v, w]
-        normals = [
-            (faceNormals[i] if reverse else -faceNormals[i])
-            for i, _, reverse in locations
-        ]
-        n0 = normals[0]
-        angles = [ _angle(n, n0, edgeDirection) for n in normals ]
-        order = sorted(range(len(angles)), key=(lambda i: angles[i]))
 
-        for i, j in _cyclicPairs(order):
-            neighbors[locations[i]] = locations[j]
+        if len(locations) == 2:
+            neighbors[locations[0]] = locations[1]
+            neighbors[locations[1]] = locations[0]
+        elif len(locations) > 2:
+            normals = [
+                (faceNormals[i] if reverse else -faceNormals[i])
+                for i, _, reverse in locations
+            ]
+            n0 = normals[0]
+            angles = [ _angle(n, n0, edgeDirection) for n in normals ]
+            order = sorted(range(len(angles)), key=(lambda i: angles[i]))
 
-    if verbose:
-        for i in range(len(faces)):
-            f = faces[i]
-            print("Neighbors face %d:" % i)
-            for reverse in [False, True]:
-                print("  %s" % ("back" if reverse else "front"))
-                print("    %s" % [
-                    neighbors[i, k, reverse] for k in range(len(f))
-                ])
+            for i, j in _cyclicPairs(order):
+                neighbors[locations[i]] = locations[j]
 
     return neighbors
 
