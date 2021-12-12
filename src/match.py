@@ -183,8 +183,8 @@ def _faceNeighbors(faces, vertices):
         elif len(locations) > 2:
             normals = []
             for i, _, reverse in locations:
-                normal = faceNormals.setdefault(i, _normal(faces[i], vertices))
-                normals.append(normal if reverse else normal)
+                n = faceNormals.setdefault(i, _normal(faces[i], vertices))
+                normals.append(n if reverse else -n)
 
             n0 = normals[0]
             angles = [ _angle(n, n0, edgeDirection) for n in normals ]
