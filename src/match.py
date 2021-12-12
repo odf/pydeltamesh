@@ -307,9 +307,10 @@ def _traverseAndRenumber(complex, startFace, startOffset):
                 vertexReIndex[v] = nextVertex
                 nextVertex += 1
 
-        for k in range(len(complex.faceVertices(f))):
+        n = len(complex.faceVertices(f))
+        for i in range(n):
             for reverse in [False, True]:
-                neighbor = complex.faceNeighbor(f, k, reverse)
+                neighbor = complex.faceNeighbor(f, (k + i) % n, reverse)
 
                 if neighbor is not None:
                     fn, kn, rn = neighbor
