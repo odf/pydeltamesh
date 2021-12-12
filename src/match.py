@@ -162,7 +162,7 @@ def _components(complex): # type: (Complex) -> Iterator[Component]
 def _faceNeighbors(faces, vertices):
     # type: (FaceList, np.ndarray) -> dict[Location, Location]
 
-    faceNormals = [_normal(f, vertices) for f in faces]
+    faceNormals = {}
 
     edgeLocations = {} # type: dict[OrientedEdge, list[Location]]
 
@@ -181,10 +181,11 @@ def _faceNeighbors(faces, vertices):
             neighbors[locations[0]] = locations[1]
             neighbors[locations[1]] = locations[0]
         elif len(locations) > 2:
-            normals = [
-                (faceNormals[i] if reverse else -faceNormals[i])
-                for i, _, reverse in locations
-            ]
+            normals = []
+            for i, _, reverse in locations:
+                normal = faceNormals.setdefault(i, _normal(faces[i], vertices))
+                normals.append(normal if reverse else normal)
+
             n0 = normals[0]
             angles = [ _angle(n, n0, edgeDirection) for n in normals ]
             order = sorted(range(len(angles)), key=(lambda i: angles[i]))
