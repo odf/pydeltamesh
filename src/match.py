@@ -18,7 +18,7 @@ if have_typing:
     Face = list[int]
     FaceList = list[Face]
     OrientedEdge = tuple[int, int]
-    Location = tuple[int, int]
+    Location = tuple[int, int, bool]
 
 
 # -- Helper types
@@ -53,9 +53,11 @@ Traversal = BufferedIterator
 # -- Core data types
 
 class Complex(object):
-    def __init__(self, faces): # type: (FaceList) -> None
+    def __init__(self, faces, vertices):
+        # type: (FaceList, np.ndarray) -> None
+
         self._faces = faces
-        self._neighbors = _faceNeighbors(faces)
+        self._neighbors = _faceNeighbors(faces, vertices)
         self._degrees = _vertexDegrees(faces)
 
     @property
@@ -68,8 +70,9 @@ class Complex(object):
     def faceVertices(self, f): # type: (int) -> Face
         return self._faces[f]
 
-    def faceNeighbors(self, f): # type: (int) -> list[Optional[Location]]
-        return self._neighbors[f]
+    def faceNeighbor(self, f, k, reverse):
+        # type: (int, int, bool) -> Optional[tuple[int, int, bool]]
+        return self._neighbors.get((f, k, reverse))
 
 
 
@@ -122,7 +125,7 @@ class Topology(dict):
 
         self._vertices = vertices
 
-        for c in _components(Complex(faces)):
+        for c in _components(Complex(faces, vertices)):
             self.setdefault(c.invariant, []).append(c.vertexOrders)
 
     def vertexPositions(self, indices): # type: (list[int]) -> np.ndarray
@@ -138,38 +141,87 @@ def _components(complex): # type: (Complex) -> Iterator[Component]
         if not f0 in seen:
             seen.add(f0)
             queue = [f0]
-            k = 0
+            i = 0
 
-            while k < len(queue):
-                f = queue[k]
-                k += 1
+            while i < len(queue):
+                f = queue[i]
+                i += 1
 
-                for neighbor in complex.faceNeighbors(f):
-                    if neighbor is not None:
-                        g, _ = neighbor
-                        if not g in seen:
-                            seen.add(g)
-                            queue.append(g)
+                for k in range(len(complex.faceVertices(f))):
+                    for reverse in [False, True]:
+                        neighbor = complex.faceNeighbor(f, k, reverse)
+                        if neighbor is not None:
+                            g, _, _ = neighbor
+                            if not g in seen:
+                                seen.add(g)
+                                queue.append(g)
 
             yield Component(complex, queue)
 
 
-def _faceNeighbors(faces):
-    # type: (FaceList) -> list[list[Optional[Location]]]
+def _faceNeighbors(faces, vertices, verbose=False):
+    # type: (FaceList, np.ndarray, bool) -> dict[Location, Location]
 
-    edgeLocation = {} # type: dict[OrientedEdge, Location]
+    faceNormals = [_normal(f, vertices) for f in faces]
+
+    edgeLocations = {} # type: dict[OrientedEdge, list[Location]]
 
     for i, face in enumerate(faces):
         for k, (v, w) in enumerate(_cyclicPairs(face)):
-            if (v, w) in edgeLocation:
-                raise ValueError('an oriented edge appears more than once')
-            else:
-                edgeLocation[(v, w)] = (i, k)
+            edgeLocations.setdefault((v, w), []).append((i, k, False))
+            edgeLocations.setdefault((w, v), []).append((i, k, True))
 
-    return [
-        [edgeLocation.get((w, v)) for v, w in _cyclicPairs(face)]
-        for face in faces
-    ]
+    neighbors = {}
+
+    for v, w in edgeLocations:
+        edgeDirection = _normalized(vertices[w] - vertices[v])
+        locations = edgeLocations[v, w]
+        normals = [
+            (faceNormals[i] if reverse else -faceNormals[i])
+            for i, _, reverse in locations
+        ]
+        n0 = normals[0]
+        angles = [ _angle(n, n0, edgeDirection) for n in normals ]
+        order = sorted(range(len(angles)), key=(lambda i: angles[i]))
+
+        for i, j in _cyclicPairs(order):
+            neighbors[locations[i]] = locations[j]
+
+    if verbose:
+        for i in range(len(faces)):
+            f = faces[i]
+            print("Neighbors face %d:" % i)
+            for reverse in [False, True]:
+                print("  %s" % ("back" if reverse else "front"))
+                print("    %s" % [
+                    neighbors[i, k, reverse] for k in range(len(f))
+                ])
+
+    return neighbors
+
+
+def _normal(faceIndices, verts):
+    # type: (list[int], np.ndarray) -> np.ndarray
+
+    edges = [verts[j] - verts[i] for i, j in _cyclicPairs(faceIndices)]
+
+    n = np.zeros(3)
+    for v, w in _cyclicPairs(edges):
+        n += np.cross(v, w)
+
+    return _normalized(n)
+
+
+def _normalized(v):
+    # type: (np.ndarray) -> np.ndarray
+    return v / np.sqrt(np.dot(v, v))
+
+
+def _angle(normal, baseNormal, edgeDir):
+    a = np.arccos(np.clip(np.dot(normal, baseNormal), -1, 1))
+    d = np.dot(edgeDir, np.cross(normal, baseNormal))
+
+    return a if d >= 0 else 2 * np.pi - a
 
 
 def _vertexDegrees(faces): # type: (FaceList) -> list[int]
@@ -215,7 +267,7 @@ def _optimalTraversals(component): # type: (Component) -> list[Traversal]
     return result
 
 
-def _startCandidates(component): # type: (Component) -> list[Location]
+def _startCandidates(component): # type: (Component) -> list[tuple[int, int]]
     complex = component.complex
 
     cost = {} # type: dict[int, int]
@@ -226,7 +278,7 @@ def _startCandidates(component): # type: (Component) -> list[Location]
 
     d = min((c, i) for i, c in cost.items())[1]
 
-    result = [] # type: list[Location]
+    result = [] # type: list[tuple[int, int]]
 
     for f in component.faceIndices:
         vs = complex.faceVertices(f)
@@ -243,25 +295,28 @@ def _traverseAndRenumber(complex, startFace, startOffset):
 
     vertexReIndex = {} # type: dict[int, int]
     nextVertex = 1
-    queue = [(startFace, startOffset)]
+    queue = [(startFace, startOffset, False)]
     seen = set([startFace])
 
     while len(queue) > 0:
-        f, k = queue.pop(0)
+        f, k, reverse = queue.pop(0)
         vs = _rotate(k, complex.faceVertices(f))
-        nbs = _rotate(k, complex.faceNeighbors(f))
 
         for v in vs:
             if not v in vertexReIndex:
                 vertexReIndex[v] = nextVertex
                 nextVertex += 1
 
-        for nb in nbs:
-            if nb is not None:
-                fn, kn = nb
-                if not fn in seen:
-                    queue.append((fn, kn))
-                    seen.add(fn)
+        for k in range(len(complex.faceVertices(f))):
+            for reverse in [False, True]:
+                neighbor = complex.faceNeighbor(f, k, reverse)
+
+                if neighbor is not None:
+                    fn, kn, rn = neighbor
+
+                    if not fn in seen:
+                        queue.append((fn, kn, rn))
+                        seen.add(fn)
 
         yield vs, [vertexReIndex[v] for v in vs]
 
