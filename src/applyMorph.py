@@ -14,7 +14,7 @@ def run():
     if args.verbose:
         print("Counts for morph: %s" % symmetryCounts(topoMorph))
 
-    mapping = match(topoBase, topoMorph)
+    mapping = match(topoBase, topoMorph, verbose=args.verbose)
     if args.verbose:
         print("Mapping (of %d vertices):\n%s" % (len(mapping), mapping))
 

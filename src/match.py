@@ -350,8 +350,8 @@ if have_typing:
     CostFunction = Callable[[list[int], list[int]], float]
 
 
-def match(topoA, topoB, metric=None):
-    # type: (Topology, Topology, CostFunction) -> np.ndarray
+def match(topoA, topoB, metric=None, verbose=False):
+    # type: (Topology, Topology, CostFunction, bool) -> np.ndarray
 
     import optimize
 
@@ -362,6 +362,8 @@ def match(topoA, topoB, metric=None):
 
     matchedVerticesInA = []
     matchedVerticesInB = []
+
+    nrPartsMatched = 0
 
     for key in topoA.keys():
         compA = topoA.get(key, [])
@@ -376,6 +378,7 @@ def match(topoA, topoB, metric=None):
                     M[j, k] = min(costs)
 
             assignment = optimize.minimumWeightAssignment(M)
+            nrPartsMatched += len(assignment)
 
             for j, k in assignment:
                 instA = compA[j]
@@ -385,5 +388,12 @@ def match(topoA, topoB, metric=None):
 
                 matchedVerticesInA.extend(compA[j][0])
                 matchedVerticesInB.extend(compB[k][np.argmin(costs)])
+
+    if verbose:
+        nrPartsA = sum(len(compA) for compA in topoA.values())
+        nrPartsB = sum(len(compB) for compB in topoB.values())
+        print("Matched %d parts out of %d and %d" % (
+            nrPartsMatched, nrPartsA, nrPartsB
+        ))
 
     return np.transpose((matchedVerticesInA, matchedVerticesInB))
