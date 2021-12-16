@@ -17,6 +17,7 @@ def read_pmd(fp):
     nrDeltas = []
     dataStarts = []
     uuids = []
+    uuidToIndex = {}
 
     for i in range(nrTargets):
         morphnames.append(read_str(fp))
@@ -26,7 +27,9 @@ def read_pmd(fp):
 
     if min(dataStarts) > fp.tell():
         for i in range(nrTargets):
-            uuids.append(read_str(fp))
+            uuid = read_str(fp)
+            uuidToIndex[uuid] = i
+            uuids.append(uuid)
 
     deltaIndices = []
     deltaVectors = []
@@ -37,18 +40,29 @@ def read_pmd(fp):
         deltaIndices.append(indices)
         deltaVectors.append(vectors)
 
-    for i in range(len(dataStarts)):
-        print(actornames[i])
-        print(morphnames[i])
-        print(uuids[i] if i < len(uuids) else "[no uuid]")
-        print(nrDeltas[i])
+    while True:
+        dummy = fp.read(4)
+        if len(dummy) < 4:
+            break
 
-        for j in range(len(deltaIndices[i])):
-            k = deltaIndices[i][j]
-            x, y, z = deltaVectors[i][j]
-            print("%7d   %10.7f %10.7f %10.7f" % (k, x, y, z))
+        size = read_uint(fp)
+        propertyName = read_str(fp)
+        nextPropertyPos = fp.tell() + size - 4
 
-        print()
+        if propertyName == "SDLEVELS":
+            nrTargets = read_uint(fp)
+
+            for i in range(nrTargets):
+                uuid = read_str(fp)
+                nrLevels = read_uint(fp)
+                print("target %s has %d subd levels" % (uuid, nrLevels))
+
+                for j in range(nrLevels):
+                    level = read_uint(fp)
+                    nrDeltas = read_uint(fp)
+                    pos = read_uint(fp)
+
+        fp.seek(nextPropertyPos)
 
 
 def read_uint(fp, size=4):
@@ -67,10 +81,6 @@ def read_str(fp):
     return codecs.decode(fp.read(strlen))
 
 
-def read_vector3d(fp):
-    return struct.unpack("!fff", fp.read(12))
-
-
 def read_deltas(fp):
     nrIndices = read_uint(fp)
 
@@ -81,6 +91,10 @@ def read_deltas(fp):
         vectors.append(read_vector3d(fp))
 
     return indices, vectors
+
+
+def read_vector3d(fp):
+    return struct.unpack("!fff", fp.read(12))
 
 
 if __name__ == "__main__":
