@@ -5,8 +5,8 @@ import struct
 def read_pmd(fp):
     fp.seek(0)
 
-    magic = fp.read(4)
-    if magic != b"PZMD":
+    magic = codecs.decode(fp.read(4))
+    if magic != "PZMD":
         raise IOError("Not a Poser PMD file")
 
     fp.seek(16)
@@ -65,22 +65,6 @@ def read_pmd(fp):
         fp.seek(nextPropertyPos)
 
 
-def read_uint(fp, size=4):
-    if size == 1:
-        return struct.unpack("!B", fp.read(size))[0]
-    elif size == 2:
-        return struct.unpack("!H", fp.read(size))[0]
-    elif size == 4:
-        return struct.unpack("!I", fp.read(size))[0]
-    else:
-        raise ValueError("invalid int size: " + size)
-
-
-def read_str(fp):
-    strlen = read_uint(fp, 1)
-    return codecs.decode(fp.read(strlen))
-
-
 def read_deltas(fp):
     nrIndices = read_uint(fp)
 
@@ -91,6 +75,15 @@ def read_deltas(fp):
         vectors.append(read_vector3d(fp))
 
     return indices, vectors
+
+
+def read_uint(fp):
+    return struct.unpack("!I", fp.read(4))[0]
+
+
+def read_str(fp):
+    strlen = ord(fp.read(1))
+    return codecs.decode(fp.read(strlen))
 
 
 def read_vector3d(fp):
