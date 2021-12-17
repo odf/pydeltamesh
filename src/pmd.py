@@ -4,7 +4,12 @@ import struct
 from collections import namedtuple
 
 
-Deltas = namedtuple("Deltas", ["indices", "vectors"])
+Deltas = namedtuple("Deltas", ["numb_deltas", "indices", "vectors"])
+
+MorphTarget = namedtuple(
+    "MorphTarget",
+    ["name", "actor", "uuid", "deltas", "subd_deltas"]
+)
 
 
 def read_pmd(fp):
@@ -17,30 +22,37 @@ def read_pmd(fp):
     fp.seek(16)
     nrTargets = read_uint(fp)
 
-    morphnames = []
-    actornames = []
-    nrDeltas = []
+    targets = []
     dataStarts = []
-    uuids = []
     uuidToIndex = {}
 
     for i in range(nrTargets):
-        morphnames.append(read_str(fp))
-        actornames.append(read_str(fp))
-        nrDeltas.append(read_uint(fp))
+        name = read_str(fp)
+        actor = read_str(fp)
+        numb_deltas = read_uint(fp)
         dataStarts.append(read_uint(fp))
+
+        targets.append(
+            MorphTarget(
+                name=name,
+                actor=actor,
+                uuid=None,
+                deltas=Deltas(numb_deltas, [], []),
+                subd_deltas=None
+            )
+        )
 
     if min(dataStarts) > fp.tell():
         for i in range(nrTargets):
             uuid = read_str(fp)
             uuidToIndex[uuid] = i
-            uuids.append(uuid)
+            targets[i] = targets[i]._replace(uuid = uuid)
 
-    deltas = []
-
-    for pos in dataStarts:
-        fp.seek(pos)
-        deltas.append(read_deltas(fp))
+    for i in range(nrTargets):
+        fp.seek(dataStarts[i])
+        targets[i] = targets[i]._replace(
+            deltas = read_deltas(fp, targets[i].deltas)
+        )
 
     while True:
         pos = fp.tell()
@@ -55,7 +67,7 @@ def read_pmd(fp):
         nextPropertyPos = fp.tell() + size - 4
 
         if propertyName == "SDLEVELS":
-            subdivDeltas = [None] * len(morphnames)
+            subdivDeltas = [None] * len(targets)
             nrTargets = read_uint(fp)
 
             for i in range(nrTargets):
@@ -81,8 +93,12 @@ def read_pmd(fp):
 
         fp.seek(nextPropertyPos)
 
+    for target in targets:
+        print(target)
+        print()
 
-def read_deltas(fp):
+
+def read_deltas(fp, template=None):
     nrIndices = read_uint(fp)
 
     indices = []
@@ -91,7 +107,10 @@ def read_deltas(fp):
         indices.append(read_uint(fp))
         vectors.append(read_vector3d(fp))
 
-    return Deltas(indices, vectors)
+    if template:
+        return template._replace(indices=indices, vectors=vectors)
+    else:
+        return Deltas(0, indices, vectors)
 
 
 def print_deltas(deltas):
