@@ -1,4 +1,3 @@
-import codecs
 import struct
 
 from collections import namedtuple
@@ -18,7 +17,7 @@ MorphTarget = namedtuple(
 def read_pmd(fp):
     fp.seek(0)
 
-    magic = codecs.decode(fp.read(4))
+    magic = fp.read(4).decode()
     if magic != "PZMD":
         raise IOError("Not a Poser PMD file")
 
@@ -129,7 +128,7 @@ def read_uint(fp):
 
 def read_str(fp):
     strlen = ord(fp.read(1))
-    return codecs.decode(fp.read(strlen))
+    return fp.read(strlen).decode()
 
 
 def read_vector3d(fp):
