@@ -38,9 +38,11 @@ def read_pmd(fp):
         deltas.append(read_deltas(fp))
 
     while True:
-        dummy = fp.read(4)
-        if len(dummy) < 4:
+        dummy = fp.read(8)
+        if len(dummy) < 8:
             break
+        else:
+            fp.seek(-4, 1)
 
         size = read_uint(fp)
         propertyName = read_str(fp)
@@ -65,7 +67,7 @@ def read_pmd(fp):
                     print("Level %d has %d deltas at 0%o" % (
                         level, nrDeltas, pos
                     ))
-                    if nrDeltas > 0:
+                    if pos > 0:
                         subdivDeltas[targetIndex][level] = pos
 
             for i in range(len(subdivDeltas)):
