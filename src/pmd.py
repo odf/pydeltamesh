@@ -4,7 +4,10 @@ import struct
 from collections import namedtuple
 
 
-Deltas = namedtuple("Deltas", ["numb_deltas", "indices", "vectors"])
+Deltas = namedtuple(
+    "Deltas",
+    ["numb_deltas", "indices", "vectors"]
+)
 
 MorphTarget = namedtuple(
     "MorphTarget",
@@ -38,7 +41,7 @@ def read_pmd(fp):
                 actor=actor,
                 uuid=None,
                 deltas=Deltas(numb_deltas, [], []),
-                subd_deltas=None
+                subd_deltas={}
             )
         )
 
@@ -67,35 +70,35 @@ def read_pmd(fp):
         nextPropertyPos = fp.tell() + size - 4
 
         if propertyName == "SDLEVELS":
-            subdivDeltas = [None] * len(targets)
-            nrTargets = read_uint(fp)
+            subdivDeltas = {}
+            nrSubdTargets = read_uint(fp)
 
-            for i in range(nrTargets):
+            for i in range(nrSubdTargets):
                 uuid = read_str(fp)
                 targetIndex = uuidToIndex[uuid]
 
                 nrLevels = read_uint(fp)
-                subdivDeltas[targetIndex] = [None] * (nrLevels + 1)
+                subdivDeltas[targetIndex] = {}
 
                 for j in range(nrLevels):
                     level = read_uint(fp)
-                    nrDeltas = read_uint(fp)
+                    numb_deltas = read_uint(fp)
                     pos = read_uint(fp)
                     if pos > 0:
-                        subdivDeltas[targetIndex][level] = pos
+                        subdivDeltas[targetIndex][level] = numb_deltas, pos
 
-            for i in range(len(subdivDeltas)):
-                if subdivDeltas[i] is not None:
-                    for j in range(len(subdivDeltas[i])):
-                        if subdivDeltas[i][j] is not None:
-                            fp.seek(subdivDeltas[i][j])
-                            subdivDeltas[i][j] = read_deltas(fp)
+            for i in subdivDeltas:
+                for j in subdivDeltas[i]:
+                    numb_deltas, pos = subdivDeltas[i][j]
+                    template = Deltas(numb_deltas, [], [])
+                    fp.seek(pos)
+                    subdivDeltas[i][j] = read_deltas(fp, template)
+
+                targets[i].subd_deltas.update(subdivDeltas[i])
 
         fp.seek(nextPropertyPos)
 
-    for target in targets:
-        print(target)
-        print()
+    return targets
 
 
 def read_deltas(fp, template=None):
@@ -137,4 +140,8 @@ if __name__ == "__main__":
     import sys
 
     with open(sys.argv[1], "rb") as fp:
-        read_pmd(fp)
+        targets = read_pmd(fp)
+
+        for target in targets:
+            print(target)
+            print()
