@@ -1,6 +1,11 @@
 import codecs
 import struct
 
+from collections import namedtuple
+
+
+Deltas = namedtuple("Deltas", ["indices", "vectors"])
+
 
 def read_pmd(fp):
     fp.seek(0)
@@ -38,11 +43,12 @@ def read_pmd(fp):
         deltas.append(read_deltas(fp))
 
     while True:
+        pos = fp.tell()
         dummy = fp.read(8)
         if len(dummy) < 8:
             break
         else:
-            fp.seek(-4, 1)
+            fp.seek(pos + 4)
 
         size = read_uint(fp)
         propertyName = read_str(fp)
@@ -58,15 +64,11 @@ def read_pmd(fp):
 
                 nrLevels = read_uint(fp)
                 subdivDeltas[targetIndex] = [None] * (nrLevels + 1)
-                print("target %s has %d subd levels" % (uuid, nrLevels))
 
                 for j in range(nrLevels):
                     level = read_uint(fp)
                     nrDeltas = read_uint(fp)
                     pos = read_uint(fp)
-                    print("Level %d has %d deltas at 0%o" % (
-                        level, nrDeltas, pos
-                    ))
                     if pos > 0:
                         subdivDeltas[targetIndex][level] = pos
 
@@ -74,19 +76,8 @@ def read_pmd(fp):
                 if subdivDeltas[i] is not None:
                     for j in range(len(subdivDeltas[i])):
                         if subdivDeltas[i][j] is not None:
-                            print("\nDeltas for target %s, level %d:" % (
-                                uuids[i], j
-                            ))
                             fp.seek(subdivDeltas[i][j])
-                            data = read_deltas(fp)
-                            subdivDeltas[i][j] = data
-
-                            for k in range(len(data[0])):
-                                idx = data[0][k]
-                                x, y, z = data[1][k]
-                                print("%7d    %g  %g  %g" %(
-                                    idx, x, y, z
-                                ))
+                            subdivDeltas[i][j] = read_deltas(fp)
 
         fp.seek(nextPropertyPos)
 
@@ -100,7 +91,14 @@ def read_deltas(fp):
         indices.append(read_uint(fp))
         vectors.append(read_vector3d(fp))
 
-    return indices, vectors
+    return Deltas(indices, vectors)
+
+
+def print_deltas(deltas):
+    for i in range(len(deltas.indices)):
+        k = deltas.indices[i]
+        x, y, z = deltas.vectors[i]
+        print("%7d    %g  %g  %g" % (k, x, y, z))
 
 
 def read_uint(fp):
