@@ -31,14 +31,11 @@ def read_pmd(fp):
             uuidToIndex[uuid] = i
             uuids.append(uuid)
 
-    deltaIndices = []
-    deltaVectors = []
+    deltas = []
 
     for pos in dataStarts:
         fp.seek(pos)
-        indices, vectors = read_deltas(fp)
-        deltaIndices.append(indices)
-        deltaVectors.append(vectors)
+        deltas.append(read_deltas(fp))
 
     while True:
         dummy = fp.read(4)
@@ -50,17 +47,44 @@ def read_pmd(fp):
         nextPropertyPos = fp.tell() + size - 4
 
         if propertyName == "SDLEVELS":
+            subdivDeltas = [None] * len(morphnames)
             nrTargets = read_uint(fp)
 
             for i in range(nrTargets):
                 uuid = read_str(fp)
+                targetIndex = uuidToIndex[uuid]
+
                 nrLevels = read_uint(fp)
+                subdivDeltas[targetIndex] = [None] * (nrLevels + 1)
                 print("target %s has %d subd levels" % (uuid, nrLevels))
 
                 for j in range(nrLevels):
                     level = read_uint(fp)
                     nrDeltas = read_uint(fp)
                     pos = read_uint(fp)
+                    print("Level %d has %d deltas at 0%o" % (
+                        level, nrDeltas, pos
+                    ))
+                    if nrDeltas > 0:
+                        subdivDeltas[targetIndex][level] = pos
+
+            for i in range(len(subdivDeltas)):
+                if subdivDeltas[i] is not None:
+                    for j in range(len(subdivDeltas[i])):
+                        if subdivDeltas[i][j] is not None:
+                            print("\nDeltas for target %s, level %d:" % (
+                                uuids[i], j
+                            ))
+                            fp.seek(subdivDeltas[i][j])
+                            data = read_deltas(fp)
+                            subdivDeltas[i][j] = data
+
+                            for k in range(len(data[0])):
+                                idx = data[0][k]
+                                x, y, z = data[1][k]
+                                print("%7d    %g  %g  %g" %(
+                                    idx, x, y, z
+                                ))
 
         fp.seek(nextPropertyPos)
 
