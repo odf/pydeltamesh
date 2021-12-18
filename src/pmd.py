@@ -65,8 +65,8 @@ def read_pmd(fp):
             fp.seek(pos + 4)
 
         size = read_uint(fp)
-        propertyName = read_str(fp)
         nextPropertyPos = fp.tell() + size - 4
+        propertyName = read_str(fp)
 
         if propertyName == "SDLEVELS":
             subdivDeltas = {}
@@ -125,6 +125,35 @@ def write_pmd(fp, targets):
     for i, target in enumerate(targets):
         write_uint_at(fp, dataStartPointers[i], fp.tell())
         write_deltas(fp, target.deltas)
+
+    if any(t.subd_deltas for t in targets):
+        write_uint(fp, 1)
+        blockStart = fp.tell()
+        write_uint(fp, 0)
+        write_str(fp, "SDLEVELS")
+
+        subdTargets = [t for t in targets if t.subd_deltas]
+        write_uint(fp, len(subdTargets))
+
+        dataStartPointers = {}
+
+        for target in subdTargets:
+            write_str(fp, target.uuid)
+            write_uint(fp, len(target.subd_deltas))
+
+            for level, deltas in target.subd_deltas.items():
+                write_uint(fp, level)
+                write_uint(fp, deltas.numb_deltas)
+                dataStartPointers[target.uuid, level] = fp.tell()
+                write_uint(fp, 0)
+
+        for target in subdTargets:
+            for level, deltas in target.subd_deltas.items():
+                pos = dataStartPointers[target.uuid, level]
+                write_uint_at(fp, pos, fp.tell())
+                write_deltas(fp, deltas)
+
+        write_uint_at(fp, blockStart, fp.tell() - blockStart)
 
 
 def read_deltas(fp, template=None):
