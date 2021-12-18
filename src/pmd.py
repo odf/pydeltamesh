@@ -100,6 +100,33 @@ def read_pmd(fp):
     return targets
 
 
+def write_pmd(fp, targets):
+    fp.seek(0)
+    fp.write("PZMD".encode())
+    write_uint(fp, 0)
+    write_uint(fp, 0)
+    write_uint(fp, 0)
+
+    write_uint(fp, len(targets))
+
+    dataStartPointers = []
+
+    for target in targets:
+        write_str(fp, target.name)
+        write_str(fp, target.actor)
+        write_uint(fp, target.deltas.numb_deltas)
+        dataStartPointers.append(fp.tell())
+        write_uint(fp, 0)
+
+    if all(t.uuid for t in targets):
+        for target in targets:
+            write_str(fp, target.uuid)
+
+    for i, target in enumerate(targets):
+        write_uint_at(fp, dataStartPointers[i], fp.tell())
+        write_deltas(fp, target.deltas)
+
+
 def read_deltas(fp, template=None):
     nrIndices = read_uint(fp)
 
@@ -115,6 +142,15 @@ def read_deltas(fp, template=None):
         return Deltas(0, indices, vectors)
 
 
+def write_deltas(fp, deltas):
+    nrIndices = len(deltas.indices)
+    write_uint(fp, nrIndices)
+
+    for i in range(nrIndices):
+        write_uint(fp, deltas.indices[i])
+        write_vector3d(fp, deltas.vectors[i])
+
+
 def print_deltas(deltas):
     for i in range(len(deltas.indices)):
         k = deltas.indices[i]
@@ -127,12 +163,33 @@ def read_uint(fp):
 
 
 def read_str(fp):
-    strlen = ord(fp.read(1))
+    strlen = struct.unpack("!b", fp.read(1))[0]
     return fp.read(strlen).decode()
 
 
 def read_vector3d(fp):
     return struct.unpack("!fff", fp.read(12))
+
+
+def write_uint(fp, value):
+    fp.write(struct.pack("!I", value))
+
+
+def write_uint_at(fp, pos, value):
+    oldpos = fp.tell()
+    fp.seek(pos)
+    write_uint(fp, value)
+    fp.seek(oldpos)
+
+
+def write_str(fp, s):
+    assert(len(s) < 256)
+    fp.write(struct.pack("!b", len(s)))
+    fp.write(s.encode())
+
+
+def write_vector3d(fp, value):
+    fp.write(struct.pack("!fff", *value))
 
 
 if __name__ == "__main__":
@@ -141,6 +198,9 @@ if __name__ == "__main__":
     with open(sys.argv[1], "rb") as fp:
         targets = read_pmd(fp)
 
-        for target in targets:
-            print(target)
-            print()
+    for target in targets:
+        print(target)
+        print()
+
+    with open("testOutput.pmd", "wb") as fp:
+        write_pmd(fp, targets)
