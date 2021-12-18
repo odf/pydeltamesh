@@ -1,4 +1,5 @@
 def run():
+    import copy
     import os.path
 
     import obj
@@ -18,10 +19,7 @@ def run():
     if args.verbose:
         print("Mapping (of %d vertices):\n%s" % (len(mapping), mapping))
 
-    dataOut = dataBase.copy()
-    dataOut["vertices"] = dataOut["vertices"].copy()
-
-    vertsOut = dataOut["vertices"]
+    vertsOut = dataBase["vertices"].copy()
     vertsMorph = dataMorph["vertices"]
 
     for v, w in mapping:
@@ -38,8 +36,11 @@ def run():
     if outext != ".obj":
         outname += outext
 
+    dataOut = dataBase.copy()
+    dataOut["vertices"] = vertsOut
+
     with open(outname + ".obj", "w") as fp:
-        obj.save(fp, dataOut, outname + ".mtl")
+        obj.save(fp, dataOut, outname + ".mtl", writeNormals=False)
 
 
 def parseArguments():

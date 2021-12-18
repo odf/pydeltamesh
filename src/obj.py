@@ -77,7 +77,7 @@ def load(fp, path=None):
     }
 
 
-def save(fp, mesh, mtlpath = None):
+def save(fp, mesh, mtlpath = None, writeNormals=True):
     if mtlpath is not None:
         with open(mtlpath, "w") as f:
             savematerials(f, mesh["materials"])
@@ -85,8 +85,9 @@ def save(fp, mesh, mtlpath = None):
 
     for v in mesh["vertices"]:
         fp.write("v %.8f %.8f %.8f\n" % tuple(v))
-    for v in mesh["normals"]:
-        fp.write("vn %.8f %.8f %.8f\n" % tuple(v))
+    if writeNormals:
+        for v in mesh["normals"]:
+            fp.write("vn %.8f %.8f %.8f\n" % tuple(v))
     for v in mesh["texverts"]:
         fp.write("vt %.8f %.8f\n" % tuple(v))
 
@@ -118,7 +119,7 @@ def save(fp, mesh, mtlpath = None):
             fp.write(" %s/%s/%s" % (
                 v[i] + 1 if i < len(v) else "",
                 vt[i] + 1 if i < len(vt) else "",
-                vn[i] + 1 if i < len(vn) else "",
+                vn[i] + 1 if writeNormals and i < len(vn) else "",
             ))
         fp.write("\n")
 
