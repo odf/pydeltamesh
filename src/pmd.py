@@ -103,7 +103,7 @@ def read_pmd(fp):
 def write_pmd(fp, targets):
     fp.seek(0)
     fp.write("PZMD".encode())
-    write_uint(fp, 0)
+    write_uint(fp, 3)
     write_uint(fp, 0)
     write_uint(fp, 0)
 
@@ -144,14 +144,18 @@ def write_pmd(fp, targets):
             for level, deltas in target.subd_deltas.items():
                 write_uint(fp, level)
                 write_uint(fp, deltas.numb_deltas)
-                dataStartPointers[target.uuid, level] = fp.tell()
+                if deltas.numb_deltas > 0:
+                    dataStartPointers[target.uuid, level] = fp.tell()
                 write_uint(fp, 0)
+
+        write_uint(fp, 0)
 
         for target in subdTargets:
             for level, deltas in target.subd_deltas.items():
-                pos = dataStartPointers[target.uuid, level]
-                write_uint_at(fp, pos, fp.tell())
-                write_deltas(fp, deltas)
+                if deltas.numb_deltas > 0:
+                    pos = dataStartPointers[target.uuid, level]
+                    write_uint_at(fp, pos, fp.tell())
+                    write_deltas(fp, deltas)
 
         write_uint_at(fp, blockStart, fp.tell() - blockStart)
 
