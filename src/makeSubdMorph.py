@@ -17,12 +17,17 @@ def run():
     actor = "BODY"
     uuid = str(uuid4())
 
+    numbDeltas = len(baseVerts)
+
     if args.subdivisionLevel == 0:
         deltas = morphDeltas
         subd_deltas = {}
     else:
-        deltas = Deltas(len(baseVerts), [], [])
-        subd_deltas = { args.subdivisionLevel: morphDeltas }
+        deltas = Deltas(numbDeltas, [], [])
+        subd_deltas = {}
+        for level in range(1, args.subdivisionLevel):
+            subd_deltas[level] = Deltas(0, [], [])
+        subd_deltas[args.subdivisionLevel] = morphDeltas
 
     target = MorphTarget(name, actor, uuid, deltas, subd_deltas)
 
@@ -35,7 +40,7 @@ def run():
     if args.verbose:
         print("Wrote the PMD.")
 
-    writeInjectionPoseFile(actor, name, uuid, len(baseVerts), args.verbose)
+    writeInjectionPoseFile(actor, name, uuid, numbDeltas, args.verbose)
 
 
 def loadAndProcessMesh(path, verbose=False):
@@ -76,7 +81,7 @@ def extractDeltas(verticesBase, verticesMorph, verbose=False):
 
     for i in range(len(verticesBase)):
         d = verticesMorph[i] - verticesBase[i]
-        if any(d > 1e-6):
+        if any(d > 1e-5):
             deltaIndices.append(i)
             deltaVectors.append(d)
 
