@@ -53,7 +53,10 @@ def load(fp, path=None):
             fn = []
 
             for i in range(len(pars)):
-                v, vt, vn = map(int, (pars[i] + '/0/0').split('/')[:3])
+                idcs = pars[i].split('/')
+                v = int(idcs[0]) if len(idcs) > 0 and idcs[0] else 0
+                vt = int(idcs[1]) if len(idcs) > 1 and idcs[1] else 0
+                vn = int(idcs[2]) if len(idcs) > 2 and idcs[2] else 0
                 fv.append(v + (len(vertices) if v < 0 else -1))
                 ft.append(vt + (len(texverts) if vt < 0 else -1))
                 fn.append(vn + (len(normals) if vn < 0 else -1))
