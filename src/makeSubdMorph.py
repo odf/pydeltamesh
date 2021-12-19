@@ -5,8 +5,8 @@ def run():
  
     args = parseArguments()
 
-    topoBase, base = loadAndProcessMesh(args.basepath, args.verbose)
-    topoMorph, morph = loadAndProcessMesh(args.morphpath, args.verbose)
+    base = loadMesh(args.basepath, args.verbose)
+    morph = loadMesh(args.morphpath, args.verbose)
 
     baseVerts = base["vertices"]
     morphVerts = morph["vertices"]
@@ -43,9 +43,8 @@ def run():
     writeInjectionPoseFile(actor, name, uuid, numbDeltas, args.verbose)
 
 
-def loadAndProcessMesh(path, verbose=False):
+def loadMesh(path, verbose=False):
     import obj
-    from match import topology
 
     if verbose:
         print("Loading mesh from %s..." % path)
@@ -57,6 +56,14 @@ def loadAndProcessMesh(path, verbose=False):
         print("Loaded mesh with %d vertices and %d faces." % (
             len(data["vertices"]), len(data["faces"])
         ))
+
+    return data
+
+
+def processMesh(data, verbose=False):
+    from match import topology
+
+    if verbose:
         print("Analysing the topology...")
 
     topo = topology(
@@ -67,7 +74,7 @@ def loadAndProcessMesh(path, verbose=False):
     if verbose:
         print("Analysed %d connected mesh parts." % len(topo))
 
-    return topo, data
+    return topo
 
 
 def extractDeltas(verticesBase, verticesMorph, verbose=False):
