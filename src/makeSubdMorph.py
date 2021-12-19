@@ -35,6 +35,8 @@ def run():
     if args.verbose:
         print("Wrote the PMD.")
 
+    writeInjectionPoseFile(actor, name, uuid, len(baseVerts), args.verbose)
+
 
 def loadAndProcessMesh(path, verbose=False):
     import obj
@@ -82,6 +84,70 @@ def extractDeltas(verticesBase, verticesMorph, verbose=False):
         print("Computed %d deltas." % len(deltaIndices))
 
     return Deltas(len(verticesBase), deltaIndices, deltaVectors)
+
+
+def writeInjectionPoseFile(actor, name, uuid, numbDeltas, verbose=False):
+    from poserFile import PoserFile
+
+    templateText = '''{
+
+version
+        {
+        number 12
+        build 619
+        }
+injectPMDFileMorphs -
+createFullBodyMorph -
+
+actor -
+        {
+        channels
+                {
+                targetGeom -
+                        {
+                        name -
+                        initValue 0
+                        hidden 0
+                        enabled 1
+                        forceLimits 1
+                        min 0
+                        max 1
+                        trackingScale 0.004
+                        masterSynched 1
+                        interpStyleLocked 0
+                        uuid -
+                        numbDeltas -
+                        useBinaryMorph 1
+                        blendType 0
+                        }
+                }
+        }
+}
+'''
+
+    morphPath = ':Runtime:libraries:Pose:%s.pmd' % name
+
+    source = PoserFile(templateText.splitlines())
+    root = source.root
+
+    next(root.select('injectPMDFileMorphs')).rest = morphPath
+    next(root.select('createFullBodyMorph')).rest = name
+    next(root.select('actor')).rest = actor + ":1"
+
+    targetNode = next(root.select('actor', 'channels', 'targetGeom'))
+    targetNode.rest = name
+    next(targetNode.select('name')).rest = name
+    next(targetNode.select('uuid')).rest = uuid
+    next(targetNode.select('numbDeltas')).rest = str(numbDeltas)
+
+    if verbose:
+        print("Writing the PZ2...")
+
+    with open("%s.pz2" % name, "w") as fp:
+        source.writeTo(fp)
+
+    if verbose:
+        print("Wrote the PZ2.")
 
 
 def parseArguments():
