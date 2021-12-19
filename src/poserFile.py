@@ -107,11 +107,13 @@ class Line(Node):
 
     def __init__(self, content, useCounter = False):
         Node.__init__(self)
+        self.text = content
+
         if useCounter:
-            self._nr = self.__counter[0] = self.__counter[0] + 1
+            self.__counter[0] += 1
+            self._nr = self.__counter[0]
         else:
             self._nr = 0
-        self.text = content
 
     def cloneSelf(self):
         return Line(" ".join(self.fields))
