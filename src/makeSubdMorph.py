@@ -98,18 +98,10 @@ def extractDeltas(verticesBase, verticesMorph, normalsBase, verbose=False):
 
         if norm(d) > 1e-5:
             u = normalsBase[i]
-
-            vy = np.cross([0, 1, 0], u)
-            vz = np.cross([0, 0, -1], u)
-
-            v = vy if norm(vy) > norm(vz) else vz
-            v /= norm(v)
-
-            w = np.cross(u, v)
-            w /= norm(w)
+            u /= norm(u)
 
             deltaIndices.append(i)
-            deltaVectors.append([np.dot(d, u), np.dot(d, v), np.dot(d, w)])
+            deltaVectors.append([np.dot(d, u), 0.0, 0.0])
 
     if verbose:
         print("Computed %d deltas." % len(deltaIndices))
