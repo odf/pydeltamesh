@@ -9,9 +9,12 @@ def run():
     morph = loadMesh(args.morphpath, args.verbose)
 
     baseVerts = base["vertices"]
+    baseNormals = base["normals"]
     morphVerts = morph["vertices"]
 
-    morphDeltas = extractDeltas(baseVerts, morphVerts, args.verbose)
+    morphDeltas = extractDeltas(
+        baseVerts, morphVerts, baseNormals, args.verbose
+    )
 
     name = args.morphname or "morph"
     actor = "BODY"
@@ -77,20 +80,36 @@ def processMesh(data, verbose=False):
     return topo
 
 
-def extractDeltas(verticesBase, verticesMorph, verbose=False):
+def extractDeltas(verticesBase, verticesMorph, normalsBase, verbose=False):
+    import numpy as np
     from pmd import Deltas
 
     if verbose:
         print("Computing deltas...")
+
+    def norm(v):
+        return np.sqrt(np.dot(v, v))
 
     deltaIndices = []
     deltaVectors = []
 
     for i in range(len(verticesBase)):
         d = verticesMorph[i] - verticesBase[i]
-        if any(d > 1e-5):
+
+        if norm(d) > 1e-5:
+            u = normalsBase[i]
+
+            vy = np.cross([0, 1, 0], u)
+            vz = np.cross([0, 0, -1], u)
+
+            v = vy if norm(vy) > norm(vz) else vz
+            v /= norm(v)
+
+            w = np.cross(u, v)
+            w /= norm(w)
+
             deltaIndices.append(i)
-            deltaVectors.append(d)
+            deltaVectors.append([np.dot(d, u), np.dot(d, v), np.dot(d, w)])
 
     if verbose:
         print("Computed %d deltas." % len(deltaIndices))
