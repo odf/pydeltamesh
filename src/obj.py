@@ -1,5 +1,26 @@
 import numpy as np
 
+from collections import namedtuple
+
+
+Face = namedtuple(
+    "Face",
+    [
+        "vertices",
+        "texverts",
+        "normals",
+        "object",
+        "group",
+        "material",
+        "smoothinggroup"
+    ]
+)
+
+Mesh = namedtuple(
+    "Mesh",
+    [ "vertices", "normals", "texverts", "faces", "materials"]
+)
+
 
 def load(fp, path=None):
     import os.path
@@ -61,61 +82,61 @@ def load(fp, path=None):
                 ft.append(vt + (len(texverts) if vt < 0 else -1))
                 fn.append(vn + (len(normals) if vn < 0 else -1))
 
-            faces.append({
-                'vertices': fv,
-                'texverts': ft,
-                'normals': fn,
-                'object': obj,
-                'group': group,
-                'material': material,
-                'smoothinggroup': smoothinggroup
-            })
+            faces.append(Face(
+                vertices=fv,
+                texverts=ft,
+                normals=fn,
+                object=obj,
+                group=group,
+                material=material,
+                smoothinggroup=smoothinggroup
+            ))
 
-    return {
-        'vertices': np.array(vertices),
-        'normals': np.array(normals),
-        'texverts': np.array(texverts),
-        'faces': faces,
-        'materials': materials
-    }
+    return Mesh(
+        vertices=np.array(vertices),
+        normals=np.array(normals),
+        texverts=np.array(texverts),
+        faces=faces,
+        materials=materials
+    )
 
 
 def save(fp, mesh, mtlpath = None, writeNormals=True):
     if mtlpath is not None:
         with open(mtlpath, "w") as f:
-            savematerials(f, mesh["materials"])
+            savematerials(f, mesh.materials)
         fp.write("mtllib %s\n" % mtlpath)
 
-    for v in mesh["vertices"]:
+    for v in mesh.vertices:
         fp.write("v %.8f %.8f %.8f\n" % tuple(v))
     if writeNormals:
-        for v in mesh["normals"]:
+        for v in mesh.normals:
             fp.write("vn %.8f %.8f %.8f\n" % tuple(v))
-    for v in mesh["texverts"]:
+    for v in mesh.texverts:
         fp.write("vt %.8f %.8f\n" % tuple(v))
 
-    for mat in mesh["materials"]:
+    for mat in mesh.materials:
         fp.write("usemtl %s\n" % mat)
 
     last_object = last_group = last_material = last_smoothinggroup = None
 
-    for f in mesh["faces"]:
-        if f["object"] != last_object:
-            last_object = f["object"]
+    for f in mesh.faces:
+        if f.object != last_object:
+            last_object = f.object
             fp.write("o %s\n" % last_object)
-        if f["group"] != last_group:
-            last_group = f["group"]
+        if f.group != last_group:
+            last_group = f.group
             fp.write("g %s\n" % last_group)
-        if f["material"] != last_material:
-            last_material = f["material"]
+        if f.material != last_material:
+            last_material = f.material
             fp.write("usemtl %s\n" % last_material)
-        if f["smoothinggroup"] != last_smoothinggroup:
-            last_smoothinggroup = f["smoothinggroup"]
+        if f.smoothinggroup != last_smoothinggroup:
+            last_smoothinggroup = f.smoothinggroup
             fp.write("s %s\n" % last_smoothinggroup)
 
-        v = f["vertices"]
-        vn = f["normals"]
-        vt = f["texverts"]
+        v = f.vertices
+        vn = f.normals
+        vt = f.texverts
 
         fp.write("f")
         for i in range(max(len(v), len(vn), len(vt))):

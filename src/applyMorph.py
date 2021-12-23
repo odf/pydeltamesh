@@ -19,25 +19,21 @@ def run():
     if args.verbose:
         print("Mapping (of %d vertices):\n%s" % (len(mapping), mapping))
 
-    vertsOut = dataBase["vertices"].copy()
-    vertsMorph = dataMorph["vertices"]
+    vertsOut = dataBase.vertices.copy()
+    vertsMorph = dataMorph.vertices
 
     for v, w in mapping:
         vertsOut[v] = vertsMorph[w]
 
+    dataOut = dataBase._replace(vertices=vertsOut)
+
     if args.show:
-        vertsIn = dataBase["vertices"]
-        display(
-            { "vertices": vertsIn - [0.1, 0.0, 0.0], "faces": dataBase["faces"] },
-            { "vertices": vertsOut, "faces": dataBase["faces"] }
-        )
+        shifted = dataBase.vertices - [0.1, 0.0, 0.0]
+        display(dataBase._replace(vertices=shifted), dataOut)
 
     outname, outext = os.path.splitext(args.outpath)
     if outext != ".obj":
         outname += outext
-
-    dataOut = dataBase.copy()
-    dataOut["vertices"] = vertsOut
 
     with open(outname + ".obj", "w") as fp:
         obj.save(fp, dataOut, outname + ".mtl", writeNormals=False)
@@ -85,10 +81,7 @@ def loadAndProcessMesh(path):
     with open(path) as fp:
         data = obj.load(fp, path)
 
-    topo = topology(
-        [ f["vertices"] for f in data["faces"] ],
-        data["vertices"]
-    )
+    topo = topology([ f.vertices for f in data.faces ], data.vertices)
 
     return topo, data
 
@@ -110,8 +103,8 @@ def display(*meshes):
         mesh = meshes[i]
         ps.register_surface_mesh(
             "mesh_%02d" % i,
-            np.array(mesh["vertices"]),
-            [ f["vertices"] for f in mesh["faces"] ]
+            np.array(mesh.vertices),
+            [ f.vertices for f in mesh.faces ]
         )
 
     ps.show()

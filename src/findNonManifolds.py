@@ -10,7 +10,7 @@ for path in sys.argv[1:]:
     try:
         with open(path) as fp:
             data = obj.load(fp, path)
-            faces = [ f["vertices"] for f in data["faces"] ]
+            faces = [ f.vertices for f in data.faces ]
             edgeLocations = {}
 
             for i, face in enumerate(faces):

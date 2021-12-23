@@ -5,13 +5,13 @@ def run():
     import sys
 
     baseMesh = loadMesh(sys.argv[1])
-    baseVerts = baseMesh["vertices"]
-    baseNormals = baseMesh["normals"]
-    baseTexVerts = baseMesh["texverts"]
+    baseVerts = baseMesh.vertices
+    baseNormals = baseMesh.normals
+    baseTexVerts = baseMesh.texverts
 
-    vertsN = loadMesh(sys.argv[2])["vertices"]
-    vertsU = loadMesh(sys.argv[3])["vertices"]
-    vertsV = loadMesh(sys.argv[4])["vertices"]
+    vertsN = loadMesh(sys.argv[2]).vertices
+    vertsU = loadMesh(sys.argv[3]).vertices
+    vertsV = loadMesh(sys.argv[4]).vertices
 
     dN = normalized(vertsN - baseVerts)
     dU = normalized(vertsU - baseVerts)

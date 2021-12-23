@@ -8,9 +8,9 @@ def run():
     base = loadMesh(args.basepath, args.verbose)
     morph = loadMesh(args.morphpath, args.verbose)
 
-    baseVerts = base["vertices"]
-    baseNormals = base["normals"]
-    morphVerts = morph["vertices"]
+    baseVerts = base.vertices
+    baseNormals = base.normals
+    morphVerts = morph.vertices
 
     morphDeltas = extractDeltas(
         baseVerts, morphVerts, baseNormals, args.verbose
@@ -57,7 +57,7 @@ def loadMesh(path, verbose=False):
 
     if verbose:
         print("Loaded mesh with %d vertices and %d faces." % (
-            len(data["vertices"]), len(data["faces"])
+            len(data.vertices), len(data.faces)
         ))
 
     return data
@@ -69,10 +69,7 @@ def processMesh(data, verbose=False):
     if verbose:
         print("Analysing the topology...")
 
-    topo = topology(
-        [ f["vertices"] for f in data["faces"] ],
-        data["vertices"]
-    )
+    topo = topology([ f.vertices for f in data.faces ], data.vertices)
 
     if verbose:
         print("Analysed %d connected mesh parts." % len(topo))
