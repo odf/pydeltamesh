@@ -347,13 +347,14 @@ def topology(faces, vertices): # type: (FaceList, np.ndarray) -> Topology
 
 
 if have_typing:
-    CostFunction = Callable[[list[int], list[int]], float]
+    CostFn = Callable[[list[int], list[int]], float]
+    AssignmentFn = Callable[[np.ndarray], list[tuple[int, int]]]
 
 
-def match(topoA, topoB, metric=None, verbose=False):
-    # type: (Topology, Topology, CostFunction, bool) -> np.ndarray
+def match(topoA, topoB, assignWeights, metric=None, verbose=False):
+    # type: (Topology, Topology, AssignmentFn, CostFn, bool) -> np.ndarray
 
-    import optimize
+    from lib import optimize
 
     if metric is None:
         metric = lambda idcsA, idcsB: np.sum((
@@ -377,7 +378,7 @@ def match(topoA, topoB, metric=None, verbose=False):
                     costs = [ metric(instA[0], orderB) for orderB in instB ]
                     M[j, k] = min(costs)
 
-            assignment = optimize.minimumWeightAssignment(M)
+            assignment = assignWeights(M)
             nrPartsMatched += len(assignment)
 
             for j, k in assignment:

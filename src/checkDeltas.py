@@ -43,7 +43,7 @@ def normalized(v):
 
 
 def loadMesh(path):
-    import obj
+    from lib import obj
 
     with open(path) as fp:
         data = obj.load(fp, path)

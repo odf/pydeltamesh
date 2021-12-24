@@ -1,9 +1,9 @@
 def run():
-    import copy
     import os.path
 
-    import obj
-    from match import match
+    from lib import obj
+    from lib.match import match
+    from lib.optimize import minimumWeightAssignment
 
     args = parseArguments()
 
@@ -15,7 +15,9 @@ def run():
     if args.verbose:
         print("Counts for morph: %s" % symmetryCounts(topoMorph))
 
-    mapping = match(topoBase, topoMorph, verbose=args.verbose)
+    mapping = match(
+        topoBase, topoMorph, minimumWeightAssignment, verbose=args.verbose
+    )
     if args.verbose:
         print("Mapping (of %d vertices):\n%s" % (len(mapping), mapping))
 
@@ -75,8 +77,8 @@ def parseArguments():
 
 
 def loadAndProcessMesh(path):
-    import obj
-    from match import topology
+    from lib import obj
+    from lib.match import topology
 
     with open(path) as fp:
         data = obj.load(fp, path)

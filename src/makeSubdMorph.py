@@ -1,7 +1,7 @@
 def run():
     from uuid import uuid4
 
-    from pmd import Deltas, MorphTarget, write_pmd
+    from lib.pmd import Deltas, MorphTarget, write_pmd
  
     args = parseArguments()
 
@@ -47,7 +47,7 @@ def run():
 
 
 def loadMesh(path, verbose=False):
-    import obj
+    from lib import obj
 
     if verbose:
         print("Loading mesh from %s..." % path)
@@ -64,7 +64,7 @@ def loadMesh(path, verbose=False):
 
 
 def processMesh(data, verbose=False):
-    from match import topology
+    from lib.match import topology
 
     if verbose:
         print("Analysing the topology...")
@@ -79,7 +79,7 @@ def processMesh(data, verbose=False):
 
 def extractDeltas(verticesBase, verticesMorph, normalsBase, verbose=False):
     import numpy as np
-    from pmd import Deltas
+    from lib.pmd import Deltas
 
     if verbose:
         print("Computing deltas...")
@@ -107,7 +107,7 @@ def extractDeltas(verticesBase, verticesMorph, normalsBase, verbose=False):
 
 
 def writeInjectionPoseFile(actor, name, uuid, numbDeltas, verbose=False):
-    from poserFile import PoserFile
+    from lib.poserFile import PoserFile
 
     templateText = '''{
 
