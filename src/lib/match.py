@@ -365,6 +365,7 @@ def match(topoA, topoB, assignWeights, metric=None, verbose=False):
     matchedVerticesInB = []
 
     nrPartsMatched = 0
+    nrPartsIdentical = 0
 
     for key in topoA.keys():
         compA = topoA.get(key, [])
@@ -390,11 +391,16 @@ def match(topoA, topoB, assignWeights, metric=None, verbose=False):
                 matchedVerticesInA.extend(compA[j][0])
                 matchedVerticesInB.extend(compB[k][np.argmin(costs)])
 
+                if compA[j][0] == compB[k][np.argmin(costs)]:
+                    nrPartsIdentical += 1
+
     if verbose:
         nrPartsA = sum(len(compA) for compA in topoA.values())
         nrPartsB = sum(len(compB) for compB in topoB.values())
         print("Matched %d parts out of %d and %d" % (
             nrPartsMatched, nrPartsA, nrPartsB
         ))
+        if nrPartsIdentical > 0:
+            print("For %d parts no renumbering was necessary" % nrPartsIdentical)
 
     return np.transpose((matchedVerticesInA, matchedVerticesInB))

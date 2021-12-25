@@ -19,10 +19,7 @@ def run():
         topoBase, topoMorph, minimumWeightAssignment, verbose=args.verbose
     )
     if args.verbose:
-        if all(u == v for u, v in mapping):
-            print("Mapping is identity on %d vertices" % len(mapping))
-        else:
-            print("Mapping (of %d vertices):\n%s" % (len(mapping), mapping))
+        print("Mapping (of %d vertices):\n%s" % (len(mapping), mapping))
 
     vertsOut = dataBase.vertices.copy()
     vertsMorph = dataMorph.vertices
