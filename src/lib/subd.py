@@ -46,12 +46,15 @@ def _subdTopology(vertices, faces):
 
     nextEdgeIndex = 0
     edgeIndex = {}
+    facesAtEdge = []
 
-    for f in faces:
+    for i, f in enumerate(faces):
         for v, w in _cyclicPairs(f):
             if edgeIndex.get((v, w)) is None:
                 edgeIndex[v, w] = edgeIndex[w, v] = nextEdgeIndex
+                facesAtEdge.append([])
                 nextEdgeIndex += 1
+            facesAtEdge[edgeIndex[v, w]].append(i)
 
     subdFaces = []
 
@@ -61,24 +64,19 @@ def _subdTopology(vertices, faces):
             edgeIndex[v, w] + edgePointOffset
             for v, w in _cyclicPairs(f)
         ]
-
-        subdFaces.append([f[0], ke[0], kf, ke[-1]])
-        subdFaces.append([ke[0], f[1], ke[1], kf])
-
-        for j in range(1, len(f) - 2):
-            subdFaces.append([kf, ke[j], f[j + 1], ke[j + 1]])
-
-        subdFaces.append([ke[-1], kf, ke[-2], f[-1]])
+        for j in range(len(f)):
+            subdFaces.append([f[j], ke[j], kf, ke[j - 1]])
 
     subdVerts = np.zeros((edgePointOffset + nextEdgeIndex, vertices.shape[1]))
-
     subdVerts[: len(vertices)] = vertices
 
     for i, f in enumerate(faces):
         subdVerts[i + facePointOffset] = centroid([vertices[v] for v in f])
 
     for (u, v), i in edgeIndex.items():
-        subdVerts[i + edgePointOffset] = (vertices[u] + vertices[v]) / 2.0
+        vs = [subdVerts[k + facePointOffset] for k in facesAtEdge[i]]
+        vs.extend([vertices[u], vertices[v]])
+        subdVerts[i + edgePointOffset] = centroid(vs)
 
     return subdVerts, subdFaces
 
