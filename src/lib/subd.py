@@ -1,13 +1,13 @@
 def subdivideMesh(mesh):
-    from obj import Face
+    from obj import Face, Mesh
 
-    faceVerticesOut = _subdTopology(
+    verticesOut, faceVerticesOut = _subdTopology(
         mesh.vertices, [f.vertices for f in mesh.faces]
     )
-    faceTexVertsOut = _subdTopology(
+    texVertsOut, faceTexVertsOut = _subdTopology(
         mesh.texverts, [f.texverts for f in mesh.faces]
     )
-    faceNormalsOut = _subdTopology(
+    normalsOut, faceNormalsOut = _subdTopology(
         mesh.normals, [f.normals for f in mesh.faces]
     )
 
@@ -29,10 +29,18 @@ def subdivideMesh(mesh):
             smoothinggroup=f.smoothinggroup
         ))
 
-    print(facesOut)
+    return Mesh(
+        vertices=verticesOut,
+        normals=normalsOut,
+        texverts=texVertsOut,
+        faces=facesOut,
+        materials=mesh.materials
+    )
 
 
 def _subdTopology(vertices, faces):
+    import numpy as np
+
     facePointOffset = len(vertices)
     edgePointOffset = facePointOffset + len(faces)
 
@@ -62,11 +70,26 @@ def _subdTopology(vertices, faces):
 
         subdFaces.append([ke[-1], kf, ke[-2], f[-1]])
 
-    return subdFaces
+    subdVerts = np.zeros((edgePointOffset + nextEdgeIndex, vertices.shape[1]))
+
+    subdVerts[: len(vertices)] = vertices
+
+    for i, f in enumerate(faces):
+        subdVerts[i + facePointOffset] = centroid([vertices[v] for v in f])
+
+    for (u, v), i in edgeIndex.items():
+        subdVerts[i + edgePointOffset] = (vertices[u] + vertices[v]) / 2.0
+
+    return subdVerts, subdFaces
 
 
 def _cyclicPairs(items):
     return zip(items, items[1:] + items[:1])
+
+
+def centroid(ps):
+    import numpy as np
+    return np.sum(ps, axis=0) / len(ps)
 
 
 if __name__ == "__main__":
@@ -76,4 +99,7 @@ if __name__ == "__main__":
     with open(sys.argv[1]) as fp:
         mesh = obj.load(fp)
 
-    subdivideMesh(mesh)
+    meshOut = subdivideMesh(mesh)
+
+    with open("x-subd-out.obj", "w") as fp:
+        obj.save(fp, meshOut)
