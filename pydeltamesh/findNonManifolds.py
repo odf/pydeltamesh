@@ -1,5 +1,5 @@
 import sys
-from lib import obj
+from .io import obj
 
 
 def _cyclicPairs(indices):

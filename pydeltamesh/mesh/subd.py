@@ -1,10 +1,10 @@
 def subdivideMesh(mesh):
-    from obj import Face, Mesh
+    from ..io.obj import Face, Mesh
 
-    verticesOut, faceVerticesOut = _subdTopology(
+    verticesOut, faceVerticesOut = subdivideTopology(
         mesh.vertices, [f.vertices for f in mesh.faces]
     )
-    texVertsOut, faceTexVertsOut = _subdTopology(
+    texVertsOut, faceTexVertsOut = subdivideTopology(
         mesh.texverts, [f.texverts for f in mesh.faces]
     )
 
@@ -35,7 +35,7 @@ def subdivideMesh(mesh):
     )
 
 
-def _subdTopology(vertices, faces):
+def subdivideTopology(vertices, faces):
     import numpy as np
 
     facePointOffset = len(vertices)
@@ -119,7 +119,7 @@ def centroid(ps):
 
 if __name__ == "__main__":
     import sys
-    import obj
+    from ..io import obj
 
     with open(sys.argv[1]) as fp:
         mesh = obj.load(fp)

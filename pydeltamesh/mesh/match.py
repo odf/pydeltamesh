@@ -354,8 +354,6 @@ if have_typing:
 def match(topoA, topoB, assignWeights, metric=None, verbose=False):
     # type: (Topology, Topology, AssignmentFn, CostFn, bool) -> np.ndarray
 
-    from lib import optimize
-
     if metric is None:
         metric = lambda idcsA, idcsB: np.sum((
             topoA.vertexPositions(idcsA) - topoB.vertexPositions(idcsB)

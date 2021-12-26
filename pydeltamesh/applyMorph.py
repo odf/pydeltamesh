@@ -1,9 +1,9 @@
 def run():
     import os.path
 
-    from lib import obj
-    from lib.match import match
-    from lib.optimize import minimumWeightAssignment
+    from .io import obj
+    from .mesh.match import match
+    from .util.optimize import minimumWeightAssignment
 
     args = parseArguments()
 
@@ -77,8 +77,8 @@ def parseArguments():
 
 
 def loadAndProcessMesh(path):
-    from lib import obj
-    from lib.match import topology
+    from .io import obj
+    from .mesh.match import topology
 
     with open(path) as fp:
         data = obj.load(fp, path)
