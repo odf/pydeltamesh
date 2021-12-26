@@ -7,9 +7,6 @@ def subdivideMesh(mesh):
     texVertsOut, faceTexVertsOut = _subdTopology(
         mesh.texverts, [f.texverts for f in mesh.faces]
     )
-    normalsOut, faceNormalsOut = _subdTopology(
-        mesh.normals, [f.normals for f in mesh.faces]
-    )
 
     mapping = []
     for i, f in enumerate(mesh.faces):
@@ -22,7 +19,7 @@ def subdivideMesh(mesh):
         facesOut.append(Face(
             vertices=faceVerticesOut[i],
             texverts=faceTexVertsOut[i],
-            normals=faceNormalsOut[i],
+            normals=[],
             object=f.object,
             group=f.group,
             material=f.material,
@@ -31,7 +28,7 @@ def subdivideMesh(mesh):
 
     return Mesh(
         vertices=verticesOut,
-        normals=normalsOut,
+        normals=[],
         texverts=texVertsOut,
         faces=facesOut,
         materials=mesh.materials
