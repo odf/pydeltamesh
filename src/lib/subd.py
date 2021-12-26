@@ -76,20 +76,36 @@ def _subdTopology(vertices, faces):
     subdVerts[: len(vertices)] = vertices
 
     for i, f in enumerate(faces):
-        subdVerts[i + facePointOffset] = centroid([vertices[v] for v in f])
+        subdVerts[i + facePointOffset] = centroid(vertices[f])
+
+    boundaryNeighbors = {}
 
     for (u, v), i in edgeIndex.items():
-        vs = [subdVerts[k + facePointOffset] for k in facesAtEdge[i]]
-        vs.extend([vertices[u], vertices[v]])
-        subdVerts[i + edgePointOffset] = centroid(vs)
+        if u < v:
+            vs = [vertices[u], vertices[v]]
+            if len(facesAtEdge[i]) == 2:
+                vs.extend(
+                    subdVerts[k + facePointOffset] for k in facesAtEdge[i]
+                )
+            else:
+                boundaryNeighbors.setdefault(u, set()).add(v)
+                boundaryNeighbors.setdefault(v, set()).add(u)
+
+            subdVerts[i + edgePointOffset] = centroid(vs)
 
     for v in range(len(vertices)):
-        m = len(neighbors[v])
-        p = vertices[v]
-        r = centroid([vertices[w] for w in neighbors[v]])
-        f = centroid([subdVerts[k + facePointOffset] for k in facesAtVert[v]])
-
-        subdVerts[v] = (f + r + (m - 2) * p) / m
+        if boundaryNeighbors.get(v) is None:
+            m = len(neighbors[v])
+            p = vertices[v]
+            r = centroid([vertices[w] for w in neighbors[v]])
+            f = centroid(
+                [subdVerts[k + facePointOffset] for k in facesAtVert[v]]
+            )
+            subdVerts[v] = (f + r + (m - 2) * p) / m
+        else:
+            p = vertices[v]
+            r = centroid([vertices[w] for w in boundaryNeighbors[v]])
+            subdVerts[v] = (3 * p + r) / 4
 
     return subdVerts, subdFaces
 
@@ -100,7 +116,8 @@ def _cyclicPairs(items):
 
 def centroid(ps):
     import numpy as np
-    return np.sum(ps, axis=0) / len(ps)
+    m = len(ps)
+    return np.dot([1.0/m] * m, ps)
 
 
 if __name__ == "__main__":
