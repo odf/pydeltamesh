@@ -1,3 +1,65 @@
+class Complex(object):
+    def __init__(self, faces):
+        neighbors = {}
+        facesAtVert = {}
+        edgeIndex = {}
+        vertsAtEdge = []
+        facesAtEdge = []
+        edgesAtFace = []
+
+        for i, f in enumerate(faces):
+            edgesAtFace.append([])
+
+            for v, w in _cyclicPairs(f):
+                neighbors.setdefault(v, set()).add(w)
+                neighbors.setdefault(w, set()).add(v)
+                facesAtVert.setdefault(v, set()).add(i)
+
+                if edgeIndex.get((v, w)) is None:
+                    edgeIndex[v, w] = edgeIndex[w, v] = len(facesAtEdge)
+                    vertsAtEdge.append([v, w])
+                    facesAtEdge.append(set())
+
+                facesAtEdge[edgeIndex[v, w]].add(i)
+                edgesAtFace[i].append(edgeIndex[v, w])
+
+        self._nrFaces = len(faces)
+        self._nrEdges = len(facesAtEdge)
+
+        self._vertexNeighbors = dict(
+            (v, list(s)) for v, s in neighbors.items()
+        )
+        self._vertexFaces = dict(
+            (v, list(s)) for v, s in facesAtVert.items()
+        )
+        self._edgeVertices = vertsAtEdge
+        self._edgeFaces = [list(s) for s in facesAtEdge]
+        self._faceEdges = edgesAtFace
+
+    @property
+    def nrFaces(self):
+        return self._nrFaces
+
+    @property
+    def nrEdges(self):
+        return self._nrEdges
+
+    def vertexNeighbors(self, v):
+        return self._vertexNeighbors[v]
+
+    def vertexFaces(self, v):
+        return self._vertexFaces[v]
+
+    def edgeVertices(self, i):
+        return self._edgeVertices[i]
+
+    def edgeFaces(self, i):
+        return self._edgeFaces[i]
+
+    def faceEdges(self, i):
+        return self._faceEdges[i]
+
+
 def subdivideMesh(mesh):
     from ..io.obj import Face, Mesh
 
@@ -38,70 +100,46 @@ def subdivideMesh(mesh):
 def subdivideTopology(vertices, faces):
     import numpy as np
 
-    facePointOffset = len(vertices)
-    edgePointOffset = facePointOffset + len(faces)
+    cx = Complex(faces)
 
-    neighbors = [set() for _ in range(len(vertices))]
-    facesAtVert = [[] for _ in range(len(vertices))]
-    edgeIndex = {}
-    facesAtEdge = []
-
-    for i, f in enumerate(faces):
-        for v, w in _cyclicPairs(f):
-            neighbors[v].add(w)
-            neighbors[w].add(v)
-            facesAtVert[v].append(i)
-
-            if edgeIndex.get((v, w)) is None:
-                edgeIndex[v, w] = edgeIndex[w, v] = len(facesAtEdge)
-                facesAtEdge.append([])
-            facesAtEdge[edgeIndex[v, w]].append(i)
-
+    nrVerts = len(vertices)
     subdFaces = []
 
     for i, f in enumerate(faces):
-        kf = i + facePointOffset
-        ke = [
-            edgeIndex[v, w] + edgePointOffset
-            for v, w in _cyclicPairs(f)
-        ]
+        kf = i + nrVerts
+        ke = [k + nrVerts + cx.nrFaces for k in cx.faceEdges(i)]
         for j in range(len(f)):
             subdFaces.append([f[j], ke[j], kf, ke[j - 1]])
 
-    nrSubdVerts = edgePointOffset + len(facesAtEdge)
+    nrSubdVerts = nrVerts + cx.nrFaces + cx.nrEdges
     subdVerts = np.zeros((nrSubdVerts, vertices.shape[1]))
-    subdVerts[: len(vertices)] = vertices
 
     for i, f in enumerate(faces):
-        subdVerts[i + facePointOffset] = centroid(vertices[f])
+        subdVerts[i + nrVerts] = centroid(vertices[f])
 
     boundaryNeighbors = {}
 
-    for (u, v), i in edgeIndex.items():
-        if u < v:
-            vs = [vertices[u], vertices[v]]
-            if len(facesAtEdge[i]) == 2:
-                vs.extend(
-                    subdVerts[k + facePointOffset] for k in facesAtEdge[i]
-                )
-            else:
-                boundaryNeighbors.setdefault(u, set()).add(v)
-                boundaryNeighbors.setdefault(v, set()).add(u)
+    for i in range(cx.nrEdges):
+        u, v = cx.edgeVertices(i)
+        vs = [vertices[u], vertices[v]]
+        if len(cx.edgeFaces(i)) == 2:
+            vs.extend(subdVerts[k + nrVerts] for k in cx.edgeFaces(i))
+        else:
+            boundaryNeighbors.setdefault(u, set()).add(v)
+            boundaryNeighbors.setdefault(v, set()).add(u)
 
-            subdVerts[i + edgePointOffset] = centroid(vs)
+        subdVerts[i + nrVerts + cx.nrFaces] = centroid(vs)
 
     for v in range(len(vertices)):
         if boundaryNeighbors.get(v) is None:
-            m = len(neighbors[v])
+            m = len(cx.vertexNeighbors(v))
             p = vertices[v]
-            r = centroid([vertices[w] for w in neighbors[v]])
-            f = centroid(
-                [subdVerts[k + facePointOffset] for k in facesAtVert[v]]
-            )
+            r = centroid(vertices[cx.vertexNeighbors(v)])
+            f = centroid(subdVerts[[k + nrVerts for k in cx.vertexFaces(v)]])
             subdVerts[v] = (f + r + (m - 2) * p) / m
         else:
             p = vertices[v]
-            r = centroid([vertices[w] for w in boundaryNeighbors[v]])
+            r = centroid(vertices[list(boundaryNeighbors[v])])
             subdVerts[v] = (3 * p + r) / 4
 
     return subdVerts, subdFaces
