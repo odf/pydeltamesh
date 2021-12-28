@@ -8,19 +8,13 @@ def run():
     base = loadMesh(args.basepath, args.verbose)
     morph = loadMesh(args.morphpath, args.verbose)
 
-    baseVerts = base.vertices
-    baseNormals = base.normals
-    morphVerts = morph.vertices
-
-    morphDeltas = extractDeltas(
-        baseVerts, morphVerts, baseNormals, args.verbose
-    )
+    morphDeltas = extractDeltas(base, morph, args.verbose)
 
     name = args.morphname or "morph"
     actor = "BODY"
     uuid = str(uuid4())
 
-    numbDeltas = len(baseVerts)
+    numbDeltas = len(base.vertices)
 
     if args.subdivisionLevel == 0:
         deltas = morphDeltas
@@ -77,7 +71,7 @@ def processMesh(data, verbose=False):
     return topo
 
 
-def extractDeltas(verticesBase, verticesMorph, normalsBase, verbose=False):
+def extractDeltas(base, morph, verbose=False):
     import numpy as np
     from .io.pmd import Deltas
 
@@ -86,6 +80,10 @@ def extractDeltas(verticesBase, verticesMorph, normalsBase, verbose=False):
 
     def norm(v):
         return np.sqrt(np.dot(v, v))
+
+    verticesBase = base.vertices
+    normalsBase = base.normals
+    verticesMorph = morph.vertices
 
     deltaIndices = []
     deltaVectors = []
