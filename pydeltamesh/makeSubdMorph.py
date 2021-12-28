@@ -131,7 +131,7 @@ def deltaDirectionsAtVertex(v, base, vertexLocations):
 
     n = normalized(base.normals[v])
     u = normalized(uDir - np.dot(n, uDir) * n)
-    v = -normalized(vDir - np.dot(n, vDir) * n - np.dot(u, vDir) * u)
+    v = normalized(vDir - np.dot(n, vDir) * n - np.dot(u, vDir) * u)
 
     return n, u, v
 
