@@ -114,31 +114,32 @@ def subdivide(vertices, faces):
     subdVerts = np.zeros((nrSubdVerts, vertices.shape[1]))
 
     for i, f in enumerate(cx.faces):
-        subdVerts[i + nrVerts] = centroid(vertices[f])
+        subdVerts[i + nrVerts] = centroid(vertices, f)
 
     boundaryNeighbors = {}
 
     for i in range(cx.nrEdges):
         u, v = cx.edgeVertices(i)
-        vs = [vertices[u], vertices[v]]
+        c = (vertices[u] + vertices[v]) / 2
         if len(cx.edgeFaces(i)) == 2:
-            vs.extend(subdVerts[k + nrVerts] for k in cx.edgeFaces(i))
+            c += centroid(subdVerts, (k + nrVerts for k in cx.edgeFaces(i)))
+            c /= 2
         else:
             boundaryNeighbors.setdefault(u, set()).add(v)
             boundaryNeighbors.setdefault(v, set()).add(u)
 
-        subdVerts[i + nrVerts + cx.nrFaces] = centroid(vs)
+        subdVerts[i + nrVerts + cx.nrFaces] = c
 
     for v in range(len(vertices)):
         if boundaryNeighbors.get(v) is None:
             m = len(cx.vertexNeighbors(v))
             p = vertices[v]
-            r = centroid(vertices[cx.vertexNeighbors(v)])
-            f = centroid(subdVerts[[k + nrVerts for k in cx.vertexFaces(v)]])
+            r = centroid(vertices, cx.vertexNeighbors(v))
+            f = centroid(subdVerts, (k + nrVerts for k in cx.vertexFaces(v)))
             subdVerts[v] = (f + r + (m - 2) * p) / m
         else:
             p = vertices[v]
-            r = centroid(vertices[list(boundaryNeighbors[v])])
+            r = centroid(vertices, boundaryNeighbors[v])
             subdVerts[v] = (3 * p + r) / 4
 
     return subdVerts, subdFaces
@@ -160,10 +161,15 @@ def _cyclicPairs(items):
     return zip(items, items[1:] + items[:1])
 
 
-def centroid(ps):
-    import numpy as np
-    m = len(ps)
-    return np.dot([1.0/m] * m, ps)
+def centroid(data, indices):
+    count = 0
+    sum = None
+
+    for i in indices:
+        sum = sum + data[i] if sum is not None else data[i]
+        count += 1
+
+    return sum / count
 
 
 if __name__ == "__main__":
