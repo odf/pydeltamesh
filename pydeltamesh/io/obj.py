@@ -102,50 +102,54 @@ def load(fp, path=None):
 
 
 def save(fp, mesh, mtlpath = None, writeNormals=True):
+    lines = []
+
     if mtlpath is not None:
         with open(mtlpath, "w") as f:
             savematerials(f, mesh.materials)
-        fp.write("mtllib %s\n" % mtlpath)
+        lines.append("mtllib %s\n" % mtlpath)
 
     for v in mesh.vertices:
-        fp.write("v %.8f %.8f %.8f\n" % tuple(v))
+        lines.append("v %.8f %.8f %.8f\n" % tuple(v))
     if writeNormals:
         for v in mesh.normals:
-            fp.write("vn %.8f %.8f %.8f\n" % tuple(v))
+            lines.append("vn %.8f %.8f %.8f\n" % tuple(v))
     for v in mesh.texverts:
-        fp.write("vt %.8f %.8f\n" % tuple(v))
+        lines.append("vt %.8f %.8f\n" % tuple(v))
 
     for mat in mesh.materials:
-        fp.write("usemtl %s\n" % mat)
+        lines.append("usemtl %s\n" % mat)
 
     last_object = last_group = last_material = last_smoothinggroup = None
 
     for f in mesh.faces:
         if f.object != last_object:
             last_object = f.object
-            fp.write("o %s\n" % last_object)
+            lines.append("o %s\n" % last_object)
         if f.group != last_group:
             last_group = f.group
-            fp.write("g %s\n" % last_group)
+            lines.append("g %s\n" % last_group)
         if f.material != last_material:
             last_material = f.material
-            fp.write("usemtl %s\n" % last_material)
+            lines.append("usemtl %s\n" % last_material)
         if f.smoothinggroup != last_smoothinggroup:
             last_smoothinggroup = f.smoothinggroup
-            fp.write("s %s\n" % last_smoothinggroup)
+            lines.append("s %s\n" % last_smoothinggroup)
 
         v = f.vertices
         vn = f.normals
         vt = f.texverts
 
-        fp.write("f")
+        lines.append("f")
         for i in range(max(len(v), len(vn), len(vt))):
-            fp.write(" %s/%s/%s" % (
+            lines.append(" %s/%s/%s" % (
                 v[i] + 1 if i < len(v) else "",
                 vt[i] + 1 if i < len(vt) else "",
                 vn[i] + 1 if writeNormals and i < len(vn) else "",
             ))
-        fp.write("\n")
+        lines.append("\n")
+
+    fp.write("".join(lines))
 
 
 def loadmaterials(fp, target):
