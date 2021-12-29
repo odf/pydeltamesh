@@ -23,6 +23,7 @@ class Complex(object):
                 facesAtEdge[edgeIndex[v, w]].add(i)
                 edgesAtFace[i].append(edgeIndex[v, w])
 
+        self._faces = faces
         self._nrFaces = len(faces)
         self._nrEdges = len(facesAtEdge)
 
@@ -44,6 +45,10 @@ class Complex(object):
     def nrEdges(self):
         return self._nrEdges
 
+    @property
+    def faces(self):
+        return self._faces
+
     def vertexNeighbors(self, v):
         return self._vertexNeighbors[v]
 
@@ -63,10 +68,10 @@ class Complex(object):
 def subdivideMesh(mesh):
     from ..io.obj import Face, Mesh
 
-    verticesOut, faceVerticesOut = subdivideTopology(
+    verticesOut, faceVerticesOut = subdivide(
         mesh.vertices, [f.vertices for f in mesh.faces]
     )
-    texVertsOut, faceTexVertsOut = subdivideTopology(
+    texVertsOut, faceTexVertsOut = subdivide(
         mesh.texverts, [f.texverts for f in mesh.faces]
     )
 
@@ -97,24 +102,18 @@ def subdivideMesh(mesh):
     )
 
 
-def subdivideTopology(vertices, faces):
+def subdivide(vertices, faces):
     import numpy as np
 
     cx = Complex(faces)
 
     nrVerts = len(vertices)
-    subdFaces = []
-
-    for i, f in enumerate(faces):
-        kf = i + nrVerts
-        ke = [k + nrVerts + cx.nrFaces for k in cx.faceEdges(i)]
-        for j in range(len(f)):
-            subdFaces.append([f[j], ke[j], kf, ke[j - 1]])
+    subdFaces = subdivideTopology(cx, nrVerts)
 
     nrSubdVerts = nrVerts + cx.nrFaces + cx.nrEdges
     subdVerts = np.zeros((nrSubdVerts, vertices.shape[1]))
 
-    for i, f in enumerate(faces):
+    for i, f in enumerate(cx.faces):
         subdVerts[i + nrVerts] = centroid(vertices[f])
 
     boundaryNeighbors = {}
@@ -143,6 +142,18 @@ def subdivideTopology(vertices, faces):
             subdVerts[v] = (3 * p + r) / 4
 
     return subdVerts, subdFaces
+
+
+def subdivideTopology(cx, offset):
+    subdFaces = []
+
+    for i, f in enumerate(cx.faces):
+        kf = i + offset
+        ke = [k + offset + cx.nrFaces for k in cx.faceEdges(i)]
+        for j in range(len(f)):
+            subdFaces.append([f[j], ke[j], kf, ke[j - 1]])
+
+    return subdFaces
 
 
 def _cyclicPairs(items):
