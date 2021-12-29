@@ -90,10 +90,9 @@ def extractDeltas(base, morph, verbose=False):
         d = morph.vertices[i] - base.vertices[i]
 
         if norm(d) > 1e-5:
-            n, u, v = deltaDirectionsAtVertex(i, base, vertexLocations)
-
+            n = normalized(base.normals[i])
             deltaIndices.append(i)
-            deltaVectors.append([np.dot(d, n), np.dot(d, u), np.dot(d, v)])
+            deltaVectors.append([np.dot(d, n), 0.0, 0.0])
 
     if verbose:
         print("Computed %d deltas." % len(deltaIndices))
@@ -130,8 +129,8 @@ def deltaDirectionsAtVertex(v, base, vertexLocations):
                         dir[:] += normalized(d)
 
     n = normalized(base.normals[v])
-    u = normalized(uDir - np.dot(n, uDir) * n)
-    v = normalized(vDir - np.dot(n, vDir) * n - np.dot(u, vDir) * u)
+    u = normalized(uDir)
+    v = normalized(vDir)
 
     return n, u, v
 
