@@ -1,40 +1,46 @@
 class Complex(object):
     def __init__(self, faces):
-        neighbors = {}
-        facesAtVert = {}
+        nv = 1 + max(max(f) for f in faces)
+
+        neighbors = [[] for _ in range(nv)]
+        facesAtVert = [[] for _ in range(nv)]
+        for i, f in enumerate(faces):
+            for v, w in _cyclicPairs(f):
+                if w not in neighbors[v]:
+                    neighbors[v].append(w)
+                if v not in neighbors[w]:
+                    neighbors[w].append(v)
+                if i not in facesAtVert[v]:
+                    facesAtVert[v].append(i)
+
         edgeIndex = {}
         vertsAtEdge = []
-        facesAtEdge = []
+        for f in faces:
+            for v, w in _cyclicPairs(f):
+                if edgeIndex.get((v, w)) is None:
+                    edgeIndex[v, w] = edgeIndex[w, v] = len(vertsAtEdge)
+                    vertsAtEdge.append([v, w])
+
         edgesAtFace = []
+        facesAtEdge = [[] for _ in range(len(vertsAtEdge))]
 
         for i, f in enumerate(faces):
             edgesAtFace.append([])
 
             for v, w in _cyclicPairs(f):
-                neighbors.setdefault(v, set()).add(w)
-                neighbors.setdefault(w, set()).add(v)
-                facesAtVert.setdefault(v, set()).add(i)
-
-                if edgeIndex.get((v, w)) is None:
-                    edgeIndex[v, w] = edgeIndex[w, v] = len(facesAtEdge)
-                    vertsAtEdge.append([v, w])
-                    facesAtEdge.append(set())
-
-                facesAtEdge[edgeIndex[v, w]].add(i)
-                edgesAtFace[i].append(edgeIndex[v, w])
+                k = edgeIndex[v, w]
+                edgesAtFace[i].append(k)
+                if i not in facesAtEdge[k]:
+                    facesAtEdge[k].append(i)
 
         self._faces = faces
         self._nrFaces = len(faces)
         self._nrEdges = len(facesAtEdge)
 
-        self._vertexNeighbors = dict(
-            (v, list(s)) for v, s in neighbors.items()
-        )
-        self._vertexFaces = dict(
-            (v, list(s)) for v, s in facesAtVert.items()
-        )
+        self._vertexNeighbors = neighbors
+        self._vertexFaces = facesAtVert
         self._edgeVertices = vertsAtEdge
-        self._edgeFaces = [list(s) for s in facesAtEdge]
+        self._edgeFaces = facesAtEdge
         self._faceEdges = edgesAtFace
 
     @property
