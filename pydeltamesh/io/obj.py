@@ -111,11 +111,13 @@ def save(fp, mesh, mtlpath = None, writeNormals=True):
 
     for v in mesh.vertices:
         lines.append("v %.8f %.8f %.8f\n" % tuple(v))
-    if writeNormals:
-        for v in mesh.normals:
-            lines.append("vn %.8f %.8f %.8f\n" % tuple(v))
+
     for v in mesh.texverts:
         lines.append("vt %.8f %.8f\n" % tuple(v))
+
+    if writeNormals and mesh.normals:
+        for v in mesh.normals:
+            lines.append("vn %.8f %.8f %.8f\n" % tuple(v))
 
     for mat in mesh.materials:
         lines.append("usemtl %s\n" % mat)
@@ -141,11 +143,11 @@ def save(fp, mesh, mtlpath = None, writeNormals=True):
         vt = f.texverts
 
         lines.append("f")
-        for i in range(max(len(v), len(vn), len(vt))):
+        for i in range(len(v)):
             lines.append(" %s/%s/%s" % (
-                v[i] + 1 if i < len(v) else "",
-                vt[i] + 1 if i < len(vt) else "",
-                vn[i] + 1 if writeNormals and i < len(vn) else "",
+                v[i] + 1 if v else "",
+                vt[i] + 1 if vt else "",
+                vn[i] + 1 if writeNormals and vn else "",
             ))
         lines.append("\n")
 

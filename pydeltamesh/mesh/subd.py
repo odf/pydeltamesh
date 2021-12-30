@@ -86,7 +86,7 @@ def subdivideMesh(mesh):
         facesOut.append(Face(
             vertices=faceVerticesOut[i],
             texverts=faceTexVertsOut[i],
-            normals=[],
+            normals=None,
             object=f.object,
             group=f.group,
             material=f.material,
@@ -95,7 +95,7 @@ def subdivideMesh(mesh):
 
     return Mesh(
         vertices=verticesOut,
-        normals=[],
+        normals=None,
         texverts=texVertsOut,
         faces=facesOut,
         materials=mesh.materials
