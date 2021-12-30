@@ -34,6 +34,8 @@ class Complex(object):
                     facesAtEdge[k].append(i)
 
         self._faces = faces
+
+        self._nrVertices = nv
         self._nrFaces = len(faces)
         self._nrEdges = len(facesAtEdge)
 
@@ -50,6 +52,10 @@ class Complex(object):
     @property
     def nrEdges(self):
         return self._nrEdges
+
+    @property
+    def nrVertices(self):
+        return self._nrVertices
 
     @property
     def faces(self):
@@ -109,65 +115,72 @@ def subdivideMesh(mesh):
 
 
 def subdivide(vertices, faces):
-    import numpy as np
-
     cx = Complex(faces)
-
-    nrVerts = len(vertices)
-    subdFaces = subdivideTopology(cx, nrVerts)
-
-    nrSubdVerts = nrVerts + cx.nrFaces + cx.nrEdges
-    subdVerts = np.zeros((nrSubdVerts, vertices.shape[1]))
-
-    for i, f in enumerate(cx.faces):
-        subdVerts[i + nrVerts] = centroid(vertices, f)
-
-    boundaryNeighbors = {}
-
-    for i in range(cx.nrEdges):
-        u, v = cx.edgeVertices(i)
-        c = (vertices[u] + vertices[v]) / 2
-        if len(cx.edgeFaces(i)) == 2:
-            c += centroid(subdVerts, (k + nrVerts for k in cx.edgeFaces(i)))
-            c /= 2
-        else:
-            boundaryNeighbors.setdefault(u, set()).add(v)
-            boundaryNeighbors.setdefault(v, set()).add(u)
-
-        subdVerts[i + nrVerts + cx.nrFaces] = c
-
-    for v in range(len(vertices)):
-        if boundaryNeighbors.get(v) is None:
-            m = len(cx.vertexNeighbors(v))
-            p = vertices[v]
-            r = centroid(vertices, cx.vertexNeighbors(v))
-            f = centroid(subdVerts, (k + nrVerts for k in cx.vertexFaces(v)))
-            subdVerts[v] = (f + r + (m - 2) * p) / m
-        else:
-            p = vertices[v]
-            r = centroid(vertices, boundaryNeighbors[v])
-            subdVerts[v] = (3 * p + r) / 4
+    subdFaces = subdivideTopology(cx)
+    subdVerts = interpolatePerVertexData(vertices, cx)
 
     return subdVerts, subdFaces
 
 
-def subdivideTopology(cx, offset):
+def subdivideTopology(cx):
     subdFaces = []
 
     for i, f in enumerate(cx.faces):
-        kf = i + offset
-        ke = [k + offset + cx.nrFaces for k in cx.faceEdges(i)]
+        kf = i + cx.nrVertices
+        ke = [k + cx.nrVertices + cx.nrFaces for k in cx.faceEdges(i)]
         for j in range(len(f)):
             subdFaces.append([f[j], ke[j], kf, ke[j - 1]])
 
     return subdFaces
 
 
+def interpolatePerVertexData(vertexData, cx):
+    import numpy as np
+
+    nrSubdVerts = cx.nrVertices + cx.nrFaces + cx.nrEdges
+    subdData = np.zeros((nrSubdVerts, vertexData.shape[1]))
+
+    for i, f in enumerate(cx.faces):
+        subdData[i + cx.nrVertices] = _centroid(vertexData, f)
+
+    boundaryNeighbors = {}
+
+    for i in range(cx.nrEdges):
+        u, v = cx.edgeVertices(i)
+        c = (vertexData[u] + vertexData[v]) / 2
+        if len(cx.edgeFaces(i)) == 2:
+            c += _centroid(
+                subdData, (k + cx.nrVertices for k in cx.edgeFaces(i))
+            )
+            c /= 2
+        else:
+            boundaryNeighbors.setdefault(u, set()).add(v)
+            boundaryNeighbors.setdefault(v, set()).add(u)
+
+        subdData[i + cx.nrVertices + cx.nrFaces] = c
+
+    for v in range(len(vertexData)):
+        if boundaryNeighbors.get(v) is None:
+            m = len(cx.vertexNeighbors(v))
+            p = vertexData[v]
+            r = _centroid(vertexData, cx.vertexNeighbors(v))
+            f = _centroid(
+                subdData, (k + cx.nrVertices for k in cx.vertexFaces(v))
+            )
+            subdData[v] = (f + r + (m - 2) * p) / m
+        else:
+            p = vertexData[v]
+            r = _centroid(vertexData, boundaryNeighbors[v])
+            subdData[v] = (3 * p + r) / 4
+
+    return subdData
+
+
 def _cyclicPairs(items):
     return zip(items, items[1:] + items[:1])
 
 
-def centroid(data, indices):
+def _centroid(data, indices):
     count = 0
     sum = None
 
