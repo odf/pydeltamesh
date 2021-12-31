@@ -31,14 +31,22 @@ def parseArguments():
 
 
 def run(args):
-    from uuid import uuid4
-
-    from .io.pmd import Deltas, MorphTarget, write_pmd
-
     base = loadMesh(args.basepath, args.verbose)
     baseParts = processedByGroup(base, args.verbose)
+
     morph = loadMesh(args.morphpath, args.verbose)
     morphParts = processedByGroup(morph, args.verbose)
+
+    for actor in baseParts:
+        if actor in morphParts:
+            deltas = findDeltas(
+                baseParts[actor], morphParts[actor],
+                base.vertices, morph.vertices
+            )
+            nrIndices = len(deltas.indices)
+
+            if args.verbose and nrIndices > 0:
+                print("Found %d deltas for %s." % (nrIndices, actor))
 
 
 def loadMesh(path, verbose=False):
@@ -59,6 +67,8 @@ def loadMesh(path, verbose=False):
 
 
 def processedByGroup(data, verbose=False):
+    import re
+
     from .mesh.match import topology
 
     if verbose:
@@ -73,17 +83,41 @@ def processedByGroup(data, verbose=False):
 
     topologies = {}
 
+    if verbose:
+        print("Analysing actor topologies...")
+
     for group in groupFaces:
-        if verbose:
-            print("Analysing %s topology..." % group)
+        actor = re.sub(':.*', '', group)
 
         topo = topology(groupFaces[group], data.vertices)
-        topologies[group] = topo
+        topologies[actor] = topo
 
-        if verbose:
-            print("Analysed %d connected parts for %s." % (len(topo), group))
+    if verbose:
+        print("Analysed all actor topologies.")
 
     return topologies
+
+
+def findDeltas(base, morph, vertsBase, vertsMorph):
+    from .io.pmd import Deltas
+    from .mesh.match import match
+    from .util.optimize import minimumWeightAssignment
+
+    mapping = match(base, morph, minimumWeightAssignment)
+
+    idcs = []
+    vecs = []
+    for u, v in mapping:
+        d = vertsMorph[v] - vertsBase[u]
+        if norm(d) > 1e-5:
+            idcs.append(u)
+            vecs.append(d)
+
+    return Deltas(len(idcs), idcs, vecs)
+
+
+def norm(v):
+    return sum(x * x for x in v)**0.5
 
 
 if __name__ == '__main__':
