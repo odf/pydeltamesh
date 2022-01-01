@@ -128,6 +128,20 @@ class Topology(dict):
         for c in _components(Complex(faces, vertices)):
             self.setdefault(c.invariant, []).append(c.vertexOrders)
 
+        verticesUsed = set()
+        for f in faces:
+            for v in f:
+                verticesUsed.add(v)
+
+        self._verticesUsed = sorted(verticesUsed)
+
+    @property
+    def verticesUsed(self):
+        return self._verticesUsed
+
+    def vertexPosition(self, index): # type: (int) -> np.ndarray
+        return self._vertices[index]
+
     def vertexPositions(self, indices): # type: (list[int]) -> np.ndarray
         return self._vertices[np.array(indices)]
 
@@ -401,4 +415,4 @@ def match(topoA, topoB, assignWeights, metric=None, verbose=False):
         if nrPartsIdentical > 0:
             print("For %d parts no renumbering was necessary" % nrPartsIdentical)
 
-    return np.transpose((matchedVerticesInA, matchedVerticesInB))
+    return list(zip(matchedVerticesInA, matchedVerticesInB))
