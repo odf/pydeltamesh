@@ -1,7 +1,3 @@
-from pydeltamesh.io.pmd import MorphTarget
-from pydeltamesh.makeSubdMorph import writeInjectionPoseFile
-
-
 def parseArguments():
     import argparse
 
@@ -37,7 +33,7 @@ def parseArguments():
 def run(args):
     from uuid import uuid4
 
-    from .io.pmd import MorphTarget, print_deltas, write_pmd
+    from .io.pmd import MorphTarget, write_pmd
 
     name = args.morphname
 
