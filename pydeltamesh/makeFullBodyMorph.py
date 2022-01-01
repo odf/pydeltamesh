@@ -1,3 +1,6 @@
+from pydeltamesh.io.pmd import MorphTarget
+
+
 def parseArguments():
     import argparse
 
@@ -31,13 +34,19 @@ def parseArguments():
 
 
 def run(args):
-    from .io.pmd import print_deltas
+    from uuid import uuid4
+
+    from .io.pmd import MorphTarget, print_deltas, write_pmd
+
+    name = args.morphname
 
     base = loadMesh(args.basepath, args.verbose)
     baseParts = processedByGroup(base, args.verbose)
 
     morph = loadMesh(args.morphpath, args.verbose)
     morphParts = processedByGroup(morph, args.verbose)
+
+    targets = []
 
     for actor in baseParts:
         if actor in morphParts:
@@ -48,6 +57,12 @@ def run(args):
                     n = len(deltas.indices)
                     print("Found %d deltas for %s." % (n, actor))
                     print_deltas(deltas)
+
+                key = str(uuid4())
+                targets.append(MorphTarget(name, actor, key, deltas, {}))
+
+    with open("%s.pmd" % name, "wb") as fp:
+        write_pmd(fp, targets)
 
 
 def loadMesh(path, verbose=False):
