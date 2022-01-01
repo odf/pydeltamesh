@@ -1,4 +1,5 @@
 from pydeltamesh.io.pmd import MorphTarget
+from pydeltamesh.makeSubdMorph import writeInjectionPoseFile
 
 
 def parseArguments():
@@ -56,13 +57,15 @@ def run(args):
                 if args.verbose:
                     n = len(deltas.indices)
                     print("Found %d deltas for %s." % (n, actor))
-                    print_deltas(deltas)
 
                 key = str(uuid4())
                 targets.append(MorphTarget(name, actor, key, deltas, {}))
 
     with open("%s.pmd" % name, "wb") as fp:
         write_pmd(fp, targets)
+
+    with open("%s.pz2" % name, "w") as fp:
+        writeInjectionPoseFile(fp, name, targets)
 
 
 def loadMesh(path, verbose=False):
@@ -136,6 +139,104 @@ def findDeltas(base, morph):
         return Deltas(num, [i - offset for i in idcs], vecs)
     else:
         return None
+
+
+def writeInjectionPoseFile(fp, name, targets):
+    from uuid import uuid4
+
+    from .io.poserFile import PoserFile
+
+    morphPath = ':Runtime:libraries:Pose:%s.pmd' % name
+
+    source = PoserFile(fileTemplate.splitlines())
+    root = source.root
+
+    next(root.select('injectPMDFileMorphs')).rest = morphPath
+    next(root.select('createFullBodyMorph')).rest = name
+
+    actor = PoserFile(actorTemplate.splitlines()).root
+
+    targetNode = next(actor.select('actor', 'channels', 'targetGeom'))
+    targetNode.rest = name
+    next(targetNode.select('name')).rest = name
+    next(targetNode.select('uuid')).rest = str(uuid4())
+
+    valueOpNode = next(targetNode.select('valueOpDeltaAdd'))
+    for _ in range(5):
+        valueOpNode.nextSibling.unlink()
+    valueOpNode.unlink()
+
+    next(root.select('}')).prependSibling(actor)
+
+    for target in targets:
+        actor = PoserFile(actorTemplate.splitlines()).root
+        next(actor.select('actor')).rest = target.actor + ":1"
+        next(actor.select('actor', 'channels', 'groups')).unlink()
+
+        targetNode = next(actor.select('actor', 'channels', 'targetGeom'))
+        targetNode.rest = name
+        next(targetNode.select('name')).rest = target.name
+        next(targetNode.select('uuid')).rest = target.uuid
+        next(targetNode.select('@name')).text = target.name
+        next(targetNode.select('numbDeltas')).rest = str(
+            target.deltas.numb_deltas
+        )
+
+        next(root.select('}')).prependSibling(actor)
+
+    source.writeTo(fp)
+
+
+fileTemplate = '''{
+version
+    {
+    number 12
+    build 619
+    }
+injectPMDFileMorphs -
+createFullBodyMorph -
+}
+'''
+
+
+actorTemplate = '''
+actor BODY:1
+    {
+    channels
+        {
+		groups
+			{
+			groupNode Morph
+				{
+				parmNode @name
+				}
+			}
+        targetGeom -
+            {
+            name @name
+            initValue 0
+            hidden 0
+            enabled 1
+            forceLimits 1
+            min 0
+            max 1
+            trackingScale 0.004
+            masterSynched 1
+            interpStyleLocked 0
+            valueOpDeltaAdd
+                Figure 1
+                BODY:1
+                @name
+                strength 1.000000
+                deltaAddDelta 1.000000
+            uuid @uuid
+            numbDeltas 0
+            useBinaryMorph 1
+            blendType 0
+            }
+        }
+    }
+'''
 
 
 def norm(v):
