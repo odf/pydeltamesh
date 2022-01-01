@@ -31,6 +31,8 @@ def parseArguments():
 
 
 def run(args):
+    from .io.pmd import print_deltas
+
     base = loadMesh(args.basepath, args.verbose)
     baseParts = processedByGroup(base, args.verbose)
 
@@ -39,14 +41,13 @@ def run(args):
 
     for actor in baseParts:
         if actor in morphParts:
-            deltas = findDeltas(
-                baseParts[actor], morphParts[actor],
-                base.vertices, morph.vertices
-            )
-            nrIndices = len(deltas.indices)
+            deltas = findDeltas(baseParts[actor], morphParts[actor])
 
-            if args.verbose and nrIndices > 0:
-                print("Found %d deltas for %s." % (nrIndices, actor))
+            if deltas:
+                if args.verbose:
+                    n = len(deltas.indices)
+                    print("Found %d deltas for %s." % (n, actor))
+                    print_deltas(deltas)
 
 
 def loadMesh(path, verbose=False):
@@ -98,7 +99,7 @@ def processedByGroup(data, verbose=False):
     return topologies
 
 
-def findDeltas(base, morph, vertsBase, vertsMorph):
+def findDeltas(base, morph):
     from .io.pmd import Deltas
     from .mesh.match import match
     from .util.optimize import minimumWeightAssignment
@@ -107,13 +108,19 @@ def findDeltas(base, morph, vertsBase, vertsMorph):
 
     idcs = []
     vecs = []
-    for u, v in mapping:
-        d = vertsMorph[v] - vertsBase[u]
+    for u, v in sorted(mapping):
+        d = morph.vertexPosition(v) - base.vertexPosition(u)
         if norm(d) > 1e-5:
             idcs.append(u)
             vecs.append(d)
 
-    return Deltas(len(idcs), idcs, vecs)
+    if len(idcs):
+        offset = base.verticesUsed[0]
+        num = len(base.verticesUsed)
+
+        return Deltas(num, [i - offset for i in idcs], vecs)
+    else:
+        return None
 
 
 def norm(v):
