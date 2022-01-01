@@ -19,7 +19,9 @@ def run():
         topoBase, topoMorph, minimumWeightAssignment, verbose=args.verbose
     )
     if args.verbose:
-        print("Mapping (of %d vertices):\n%s" % (len(mapping), mapping))
+        nrMapped = len(list(mapping))
+        nrMoved = len([u for u, v in mapping if u != v])
+        print("Mapped %d vertices, moved %d" % (nrMapped, nrMoved))
 
     vertsOut = dataBase.vertices.copy()
     vertsMorph = dataMorph.vertices
