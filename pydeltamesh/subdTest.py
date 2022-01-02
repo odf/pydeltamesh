@@ -47,17 +47,17 @@ if __name__ == "__main__":
             )
         )
 
-    subdLevel = int(math.log2(len(subdMesh.faces) / len(baseMesh.faces)) / 2)
-
-    print("Subdividing the base mesh %d times..." % subdLevel)
+    print("Subdividing the base mesh...")
     meshA = baseMesh
-    for i in range(subdLevel):
+    subdLevel = 0
+    while len(meshA.faces) < len(subdMesh.faces):
         meshA = subd.subdivideMesh(meshA)
-        print(
-            "Subdivided mesh has %d vertices and %d faces" % (
-                len(meshA.vertices), len(meshA.faces)
-            )
+        subdLevel += 1
+    print(
+        "Subdivided mesh %d times to obtain %d vertices and %d faces" % (
+            subdLevel, len(meshA.vertices), len(meshA.faces)
         )
+    )
 
     print("Removing unconnected vertices from the subdivision mesh...")
     meshB = squeeze(subdMesh)

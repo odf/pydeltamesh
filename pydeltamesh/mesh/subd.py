@@ -129,13 +129,14 @@ def subdivideTopology(cx):
         kf = i + cx.nrVertices
         ke = [k + cx.nrVertices + cx.nrFaces for k in cx.faceEdges(i)]
 
-        subdFaces.append([f[0], ke[0], kf, ke[-1]])
-        subdFaces.append([ke[0], f[1], ke[1], kf])
-
-        for j in range(1, len(f) - 2):
-            subdFaces.append([kf, ke[j], f[j + 1], ke[j + 1]])
-
-        subdFaces.append([ke[-1], kf, ke[-2], f[-1]])
+        if len(f) == 4:
+            subdFaces.append([f[0], ke[0], kf, ke[3]])
+            subdFaces.append([ke[0], f[1], ke[1], kf])
+            subdFaces.append([kf, ke[1], f[2], ke[2]])
+            subdFaces.append([ke[3], kf, ke[2], f[3]])
+        else:
+            for j in range(len(f)):
+                subdFaces.append([f[j], ke[j], kf, ke[j - 1]])
 
     return subdFaces
 
