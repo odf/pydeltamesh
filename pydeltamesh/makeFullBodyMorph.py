@@ -30,18 +30,18 @@ def parseArguments():
     return parser.parse_args()
 
 
-def run(args):
+def run(basepath, morphpath, morphname, verbose):
     from uuid import uuid4
 
     from .io.pmd import MorphTarget, write_pmd
 
-    name = args.morphname
+    name = morphname
 
-    base = loadMesh(args.basepath, args.verbose)
-    baseParts = processedByGroup(base, args.verbose)
+    base = loadMesh(basepath, verbose)
+    baseParts = processedByGroup(base, verbose)
 
-    morph = loadMesh(args.morphpath, args.verbose)
-    morphParts = processedByGroup(morph, args.verbose)
+    morph = loadMesh(morphpath, verbose)
+    morphParts = processedByGroup(morph, verbose)
 
     targets = []
 
@@ -50,7 +50,7 @@ def run(args):
             deltas = findDeltas(baseParts[actor], morphParts[actor])
 
             if deltas:
-                if args.verbose:
+                if verbose:
                     n = len(deltas.indices)
                     print("Found %d deltas for %s." % (n, actor))
 
@@ -240,4 +240,11 @@ def norm(v):
 
 
 if __name__ == '__main__':
-    run(parseArguments())
+    args = parseArguments()
+
+    basepath = args.basepath
+    morphpath = args.morphpath
+    morphname = args.morphname or "Morph" #TODO based default on morphpath
+    verbose = args.verbose
+
+    run(basepath, morphpath, morphname, verbose)
