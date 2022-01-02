@@ -1,7 +1,7 @@
 def run():
     from uuid import uuid4
 
-    from .io.pmd import Deltas, MorphTarget, write_pmd
+    from pydeltamesh.io.pmd import Deltas, MorphTarget, write_pmd
 
     args = parseArguments()
 
@@ -41,7 +41,7 @@ def run():
 
 
 def loadMesh(path, verbose=False):
-    from .io import obj
+    from pydeltamesh.io import obj
 
     if verbose:
         print("Loading mesh from %s..." % path)
@@ -58,7 +58,7 @@ def loadMesh(path, verbose=False):
 
 
 def processMesh(data, verbose=False):
-    from .mesh.match import topology
+    from pydeltamesh.mesh.match import topology
 
     if verbose:
         print("Analysing the topology...")
@@ -73,7 +73,7 @@ def processMesh(data, verbose=False):
 
 def extractDeltas(base, morph, verbose=False):
     import numpy as np
-    from .io.pmd import Deltas
+    from pydeltamesh.io.pmd import Deltas
 
     if verbose:
         print("Computing deltas...")
@@ -149,7 +149,7 @@ def cross2d(v, w):
 
 
 def writeInjectionPoseFile(actor, name, uuid, numbDeltas, verbose=False):
-    from .io.poserFile import PoserFile
+    from pydeltamesh.io.poserFile import PoserFile
 
     templateText = '''{
 
@@ -248,4 +248,9 @@ def parseArguments():
 
 
 if __name__ == '__main__':
+    import sys
+    from os.path import dirname
+
+    sys.path.append(dirname(dirname(__file__)))
+
     run()

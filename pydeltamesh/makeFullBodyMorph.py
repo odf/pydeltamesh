@@ -33,7 +33,7 @@ def parseArguments():
 def run(basepath, morphpath, morphname, verbose):
     from uuid import uuid4
 
-    from .io.pmd import MorphTarget, write_pmd
+    from pydeltamesh.io.pmd import MorphTarget, write_pmd
 
     name = morphname
 
@@ -65,7 +65,7 @@ def run(basepath, morphpath, morphname, verbose):
 
 
 def loadMesh(path, verbose=False):
-    from .io import obj
+    from pydeltamesh.io import obj
 
     if verbose:
         print("Loading mesh from %s..." % path)
@@ -84,7 +84,7 @@ def loadMesh(path, verbose=False):
 def processedByGroup(data, verbose=False):
     import re
 
-    from .mesh.match import topology
+    from pydeltamesh.mesh.match import topology
 
     if verbose:
         print("Splitting mesh by groups...")
@@ -114,9 +114,9 @@ def processedByGroup(data, verbose=False):
 
 
 def findDeltas(base, morph):
-    from .io.pmd import Deltas
-    from .mesh.match import match
-    from .util.optimize import minimumWeightAssignment
+    from pydeltamesh.io.pmd import Deltas
+    from pydeltamesh.mesh.match import match
+    from pydeltamesh.util.optimize import minimumWeightAssignment
 
     mapping = match(base, morph, minimumWeightAssignment)
 
@@ -140,7 +140,7 @@ def findDeltas(base, morph):
 def writeInjectionPoseFile(fp, name, targets):
     from uuid import uuid4
 
-    from .io.poserFile import PoserFile
+    from pydeltamesh.io.poserFile import PoserFile
 
     morphPath = ':Runtime:libraries:Pose:%s.pmd' % name
 
@@ -240,6 +240,11 @@ def norm(v):
 
 
 if __name__ == '__main__':
+    import sys
+    from os.path import dirname
+
+    sys.path.append(dirname(dirname(__file__)))
+
     args = parseArguments()
 
     basepath = args.basepath

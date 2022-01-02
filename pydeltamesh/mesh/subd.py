@@ -78,7 +78,7 @@ class Complex(object):
 
 
 def subdivideMesh(mesh):
-    from ..io.obj import Face, Mesh
+    from pydeltamesh.io.obj import Face, Mesh
 
     verticesOut, faceVerticesOut = subdivide(
         mesh.vertices, [f.vertices for f in mesh.faces]
@@ -193,7 +193,11 @@ def _centroid(data, indices):
 
 if __name__ == "__main__":
     import sys
-    from ..io import obj
+    from os.path import dirname
+
+    sys.path.append(dirname(dirname(dirname(__file__))))
+
+    from pydeltamesh.io import obj
 
     with open(sys.argv[1]) as fp:
         mesh = obj.load(fp)
