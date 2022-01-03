@@ -231,9 +231,11 @@ if __name__ == "__main__":
     with open(sys.argv[1], "rb") as fp:
         targets = read_pmd(fp)
 
-    for target in targets:
-        print(target)
-        print()
-
-    with open("testOutput.pmd", "wb") as fp:
-        write_pmd(fp, targets)
+    for t in targets:
+        print("%s on %s with uuid %s has %d deltas" % (
+            t.name, t.actor, t.uuid, len(t.deltas.indices)
+        ))
+        for level in t.subd_deltas:
+            print("  %d subd deltas at level %d" % (
+                len(t.subd_deltas[level].indices), level
+            ))
