@@ -37,6 +37,7 @@ def parseArguments():
 
 def run(basepath, weldedpath, morphpath, name, verbose):
     import os.path
+    from pydeltamesh.mesh.subd import subdivideMesh
     from pydeltamesh.io.pmd import write_pmd
 
     if name is None:
@@ -50,6 +51,21 @@ def run(basepath, weldedpath, morphpath, name, verbose):
     morphSubd0 = welded._replace(vertices=morphedVertsSubd0)
 
     targets = makeMorphTargets(name, base, morphSubd0, verbose)
+
+    if verbose:
+        print("Subdividing base mesh with baked down morph...")
+
+    subdBase = morphSubd0
+    subdLevel = 0
+    while len(subdBase.faces) < len(morph.faces):
+        subdBase = subdivideMesh(subdBase)
+        subdLevel += 1
+
+    if verbose:
+        print("Subdivided %d times." % subdLevel)
+
+    subdTarget = makeSubdTarget(name, subdBase, morph, subdLevel, verbose)
+    targets.append(subdTarget)
 
     with open("%s.pmd" % name, "wb") as fp:
         write_pmd(fp, targets)
@@ -120,6 +136,24 @@ def makeMorphTargets(name, baseMesh, morphedMesh, verbose=False):
     return targets
 
 
+def makeSubdTarget(name, base, morph, subdLevel, verbose=False):
+    from uuid import uuid4
+    from pydeltamesh.io.pmd import Deltas, MorphTarget
+
+    actor = "BODY"
+    key = str(uuid4())
+    baseDeltas = Deltas(len(base.vertices), [], [])
+
+    subdDeltas = {}
+
+    if subdLevel > 0:
+        for level in range(1, subdLevel):
+            subdDeltas[level] = Deltas(0, [], [])
+        subdDeltas[subdLevel] = findSubdDeltas(base, morph, args.verbose)
+
+    return MorphTarget(name, actor, key, baseDeltas, subdDeltas)
+
+
 def processedByGroup(data, verbose=False):
     import re
     from pydeltamesh.mesh.match import topology
@@ -156,8 +190,6 @@ def findDeltas(base, morph):
     from pydeltamesh.mesh.match import match
     from pydeltamesh.util.optimize import minimumWeightAssignment
 
-    norm = lambda v: sum(x * x for x in v)**0.5
-
     mapping = match(base, morph, minimumWeightAssignment)
 
     idcs = []
@@ -177,9 +209,84 @@ def findDeltas(base, morph):
         return None
 
 
-def writeInjectionPoseFile(fp, name, targets):
-    from uuid import uuid4
+def findSubdDeltas(base, morph, verbose=False):
+    from pydeltamesh.io.pmd import Deltas
 
+    if verbose:
+        print("Computing deltas...")
+
+    nv = 1 + max(max(f.vertices) for f in base.faces)
+
+    neighbors = [[] for _ in range(nv)]
+    for f in base.faces:
+        for i in range(len(f.vertices)):
+            v = f.vertices[i - 1]
+            w = f.vertices[i]
+            if w not in neighbors[v]:
+                neighbors[v].append(w)
+            if v not in neighbors[w]:
+                neighbors[w].append(v)
+
+    deltaIndices = []
+    deltaVectors = []
+
+    for v in range(len(base.vertices)):
+        d = morph.vertices[v] - base.vertices[v]
+
+        if norm(d) > 1e-5:
+            p = base.vertices[v]
+            qs = base.vertices[neighbors[v]]
+            n = normalized(vertexNormal(p, qs))
+            deltaIndices.append(v)
+            deltaVectors.append([dot(d, n), 0.0, 0.0])
+
+    if verbose:
+        print("Computed %d subd deltas." % len(deltaIndices))
+
+    return Deltas(len(base.vertices), deltaIndices, deltaVectors)
+
+
+def vertexNormal(v, ws):
+    ds = [w - v for w in ws]
+
+    ns = []
+    for i in range(len(ds)):
+        for j in range(i + 1, len(ds)):
+            ns.append(cross(ds[i], ds[j]))
+
+    ns.sort(key=norm, reverse=True)
+
+    normal = [0.0, 0.0, 0.0]
+    for i in range(min(len(ds), len(ns))):
+        normal[0] += ns[i][0]
+        normal[1] += ns[i][1]
+        normal[2] += ns[i][2]
+
+    return normalized(normal)
+
+
+def dot(v, w):
+    return sum(x * y for x, y in zip(v, w))
+
+
+def cross(v, w):
+    return [
+        v[1] * w[2] - v[2] * w[1],
+        v[2] * w[0] - v[0] * w[2],
+        v[0] * w[1] - v[1] * w[0]
+    ]
+
+
+def norm(v):
+    return sum(x * x for x in v)**0.5
+
+
+def normalized(v):
+    n = norm(v)
+    return [x / n for x in v] if n > 0 else v
+
+
+def writeInjectionPoseFile(fp, name, targets):
     from pydeltamesh.io.poserFile import PoserFile
 
     morphPath = ':Runtime:libraries:Pose:%s.pmd' % name
@@ -190,30 +297,25 @@ def writeInjectionPoseFile(fp, name, targets):
     next(root.select('injectPMDFileMorphs')).rest = morphPath
     next(root.select('createFullBodyMorph')).rest = name
 
-    actor = PoserFile(actorTemplate.splitlines()).root
-
-    targetNode = next(actor.select('actor', 'channels', 'targetGeom'))
-    targetNode.rest = name
-    next(targetNode.select('name')).rest = name
-    next(targetNode.select('uuid')).rest = str(uuid4())
-
-    valueOpNode = next(targetNode.select('valueOpDeltaAdd'))
-    for _ in range(5):
-        valueOpNode.nextSibling.unlink()
-    valueOpNode.unlink()
-
-    next(root.select('}')).prependSibling(actor)
-
     for target in targets:
         actor = PoserFile(actorTemplate.splitlines()).root
         next(actor.select('actor')).rest = target.actor + ":1"
-        next(actor.select('actor', 'channels', 'groups')).unlink()
 
         targetNode = next(actor.select('actor', 'channels', 'targetGeom'))
         targetNode.rest = name
+
+        if target.actor == "BODY":
+            valueOpNode = next(targetNode.select('valueOpDeltaAdd'))
+            for _ in range(5):
+                valueOpNode.nextSibling.unlink()
+            valueOpNode.unlink()
+        else:
+            next(actor.select('actor', 'channels', 'groups')).unlink()
+            next(targetNode.select('@name')).text = target.name
+
         next(targetNode.select('name')).rest = target.name
         next(targetNode.select('uuid')).rest = target.uuid
-        next(targetNode.select('@name')).text = target.name
+
         next(targetNode.select('numbDeltas')).rest = str(
             target.deltas.numb_deltas
         )
@@ -254,8 +356,8 @@ actor BODY:1
             hidden 0
             enabled 1
             forceLimits 1
-            min 0
-            max 1
+            min -100000
+            max 100000
             trackingScale 0.004
             masterSynched 1
             interpStyleLocked 0
