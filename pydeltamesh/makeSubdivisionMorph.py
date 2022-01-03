@@ -303,14 +303,17 @@ def writeInjectionPoseFile(fp, name, targets):
 
         targetNode = next(actor.select('actor', 'channels', 'targetGeom'))
         targetNode.rest = name
+        groupsNode = next(actor.select('actor', 'channels', 'groups'))
 
         if target.actor == "BODY":
+            next(groupsNode.select('groupNode', 'parmNode')).rest = target.name
+
             valueOpNode = next(targetNode.select('valueOpDeltaAdd'))
             for _ in range(5):
                 valueOpNode.nextSibling.unlink()
             valueOpNode.unlink()
         else:
-            next(actor.select('actor', 'channels', 'groups')).unlink()
+            groupsNode.unlink()
             next(targetNode.select('@name')).text = target.name
 
         next(targetNode.select('name')).rest = target.name
