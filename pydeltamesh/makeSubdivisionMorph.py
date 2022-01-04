@@ -68,13 +68,6 @@ def run(basepath, weldedpath, morphpath, name, verbose):
     weldedWithDeltas = welded._replace(vertices = weldedVertsWithDeltas)
 
     targets = makeMorphTargets(name, base, weldedWithDeltas, verbose)
-    targets.append(makeSubdTarget(name, welded, welded, [], 0))
-
-    with open("%s.pmd" % name, "wb") as fp:
-        write_pmd(fp, targets)
-
-    with open("%s.pz2" % name, "w") as fp:
-        writeInjectionPoseFile(fp, name, targets)
 
     if verbose:
         print("Subdividing welded and morphed base mesh...")
@@ -86,16 +79,15 @@ def run(basepath, weldedpath, morphpath, name, verbose):
     if verbose:
         print("Subdivided %d times." % subdLevel)
 
-    subdName = name + "_subd"
-    subdTarget = makeSubdTarget(
-        subdName, subdWeldedMorphed, morph, usedInMorph, subdLevel, verbose
-    )
+    targets.append(makeSubdTarget(
+        name, subdWeldedMorphed, morph, usedInMorph, subdLevel, verbose
+    ))
 
-    with open("%s.pmd" % subdName, "wb") as fp:
-        write_pmd(fp, [subdTarget])
+    with open("%s.pmd" % name, "wb") as fp:
+        write_pmd(fp, targets)
 
-    with open("%s.pz2" % subdName, "w") as fp:
-        writeInjectionPoseFile(fp, subdName, [subdTarget])
+    with open("%s.pz2" % name, "w") as fp:
+        writeInjectionPoseFile(fp, name, targets)
 
 
 def loadMesh(path, verbose=False):
