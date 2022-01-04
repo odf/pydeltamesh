@@ -44,8 +44,9 @@ def run(basepath, weldedpath, morphpath, name, verbose):
         name = os.path.splitext(os.path.split(morphpath)[1])[0]
 
     base = loadMesh(basepath, verbose)
-    welded = removeDisconnectedVertices(loadMesh(weldedpath, verbose))
-    morph = removeDisconnectedVertices(loadMesh(morphpath, verbose))
+    welded = loadMesh(weldedpath, verbose)
+    morph = loadMesh(morphpath, verbose)
+    usedInMorph = usedVertices(morph)
 
     if verbose:
         print("Subdividing welded base mesh...")
@@ -61,13 +62,13 @@ def run(basepath, weldedpath, morphpath, name, verbose):
 
     weldedVertsWithDeltas = (
         welded.vertices
-        + morph.vertices[: len(welded.vertices)]
+        + morph.vertices[usedInMorph[: len(welded.vertices)]]
         - subdWelded.vertices[: len(welded.vertices)]
     )
     weldedWithDeltas = welded._replace(vertices = weldedVertsWithDeltas)
 
     targets = makeMorphTargets(name, base, weldedWithDeltas, verbose)
-    targets.append(makeSubdTarget(name, welded, welded, 0))
+    targets.append(makeSubdTarget(name, welded, welded, [], 0))
 
     with open("%s.pmd" % name, "wb") as fp:
         write_pmd(fp, targets)
@@ -87,7 +88,7 @@ def run(basepath, weldedpath, morphpath, name, verbose):
 
     subdName = name + "_subd"
     subdTarget = makeSubdTarget(
-        subdName, subdWeldedMorphed, morph, subdLevel, verbose
+        subdName, subdWeldedMorphed, morph, usedInMorph, subdLevel, verbose
     )
 
     with open("%s.pmd" % subdName, "wb") as fp:
@@ -114,25 +115,12 @@ def loadMesh(path, verbose=False):
     return data
 
 
-def removeDisconnectedVertices(mesh):
+def usedVertices(mesh):
     used = set()
     for f in mesh.faces:
         for v in f.vertices:
             used.add(v)
-    used = sorted(used)
-
-    mapping = [-1] * len(mesh.vertices)
-    for i, v in enumerate(used):
-        mapping[v] = i
-
-    vertsOut = mesh.vertices[used]
-
-    facesOut = []
-    for f in mesh.faces:
-        vs = [ mapping[v] for v in f.vertices ]
-        facesOut.append(f._replace(vertices=vs))
-
-    return mesh._replace(vertices=vertsOut, faces=facesOut)
+    return sorted(used)
 
 
 def makeMorphTargets(name, baseMesh, morphedMesh, verbose=False):
@@ -159,20 +147,20 @@ def makeMorphTargets(name, baseMesh, morphedMesh, verbose=False):
     return targets
 
 
-def makeSubdTarget(name, base, morph, subdLevel, verbose=False):
+def makeSubdTarget(name, base, morph, mapping, subdLevel, verbose=False):
     from uuid import uuid4
     from pydeltamesh.io.pmd import Deltas, MorphTarget
 
     actor = "BODY"
     key = str(uuid4())
-    baseDeltas = Deltas(len(base.vertices), [], [])
+    baseDeltas = Deltas(len(morph.vertices), [], [])
 
     subdDeltas = {}
 
     if subdLevel > 0:
         for level in range(1, subdLevel):
             subdDeltas[level] = Deltas(0, [], [])
-        subdDeltas[subdLevel] = findSubdDeltas(base, morph, args.verbose)
+        subdDeltas[subdLevel] = findSubdDeltas(base, morph, mapping, verbose)
 
     return MorphTarget(name, actor, key, baseDeltas, subdDeltas)
 
@@ -232,58 +220,52 @@ def findDeltas(base, morph):
         return None
 
 
-def findSubdDeltas(base, morph, verbose=False):
+def findSubdDeltas(base, morph, mapping, verbose=False):
     from pydeltamesh.io.pmd import Deltas
 
     if verbose:
-        print("Computing deltas...")
+        print("Computing subdivision deltas...")
 
     nv = 1 + max(max(f.vertices) for f in base.faces)
 
-    neighbors = [[] for _ in range(nv)]
+    before = [[] for _ in range(nv)]
+    after = [[] for _ in range(nv)]
     for f in base.faces:
         for i in range(len(f.vertices)):
+            u = f.vertices[i - 2]
             v = f.vertices[i - 1]
             w = f.vertices[i]
-            if w not in neighbors[v]:
-                neighbors[v].append(w)
-            if v not in neighbors[w]:
-                neighbors[w].append(v)
+            before[v].append(u)
+            after[v].append(w)
 
     deltaIndices = []
     deltaVectors = []
 
     for v in range(len(base.vertices)):
-        d = morph.vertices[v] - base.vertices[v]
+        d = morph.vertices[mapping[v]] - base.vertices[v]
 
         if norm(d) > 1e-5:
             p = base.vertices[v]
-            qs = base.vertices[neighbors[v]]
-            n = normalized(vertexNormal(p, qs))
-            deltaIndices.append(v)
+            qs = base.vertices[after[v]]
+            rs = base.vertices[before[v]]
+            n = vertexNormal(p, qs, rs)
+            deltaIndices.append(mapping[v])
             deltaVectors.append([dot(d, n), 0.0, 0.0])
 
     if verbose:
-        print("Computed %d subd deltas." % len(deltaIndices))
+        print("Computed %d subdivision deltas." % len(deltaIndices))
 
-    return Deltas(len(base.vertices), deltaIndices, deltaVectors)
+    return Deltas(len(morph.vertices), deltaIndices, deltaVectors)
 
 
-def vertexNormal(v, ws):
-    ds = [w - v for w in ws]
-
-    ns = []
-    for i in range(len(ds)):
-        for j in range(i + 1, len(ds)):
-            ns.append(cross(ds[i], ds[j]))
-
-    ns.sort(key=norm, reverse=True)
-
+def vertexNormal(p, qs, rs):
     normal = [0.0, 0.0, 0.0]
-    for i in range(min(len(ds), len(ns))):
-        normal[0] += ns[i][0]
-        normal[1] += ns[i][1]
-        normal[2] += ns[i][2]
+
+    for i in range(len(qs)):
+        n = cross(qs[i] - p, rs[i] - p)
+        normal[0] += n[0]
+        normal[1] += n[1]
+        normal[2] += n[2]
 
     return normalized(normal)
 
