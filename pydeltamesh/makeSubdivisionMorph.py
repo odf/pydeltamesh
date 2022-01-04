@@ -47,31 +47,54 @@ def run(basepath, weldedpath, morphpath, name, verbose):
     welded = removeDisconnectedVertices(loadMesh(weldedpath, verbose))
     morph = removeDisconnectedVertices(loadMesh(morphpath, verbose))
 
-    morphedVertsSubd0 = morph.vertices[: len(welded.vertices)]
-    morphSubd0 = welded._replace(vertices=morphedVertsSubd0)
-
-    targets = makeMorphTargets(name, base, morphSubd0, verbose)
-
     if verbose:
-        print("Subdividing base mesh with baked down morph...")
+        print("Subdividing welded base mesh...")
 
-    subdBase = morphSubd0
+    subdWelded = welded
     subdLevel = 0
-    while len(subdBase.faces) < len(morph.faces):
-        subdBase = subdivideMesh(subdBase)
+    while len(subdWelded.faces) < len(morph.faces):
+        subdWelded = subdivideMesh(subdWelded)
         subdLevel += 1
 
     if verbose:
         print("Subdivided %d times." % subdLevel)
 
-    subdTarget = makeSubdTarget(name, subdBase, morph, subdLevel, verbose)
-    targets.append(subdTarget)
+    weldedVertsWithDeltas = (
+        welded.vertices
+        + morph.vertices[: len(welded.vertices)]
+        - subdWelded.vertices[: len(welded.vertices)]
+    )
+    weldedWithDeltas = welded._replace(vertices = weldedVertsWithDeltas)
+
+    targets = makeMorphTargets(name, base, weldedWithDeltas, verbose)
+    targets.append(makeSubdTarget(name, welded, welded, 0))
 
     with open("%s.pmd" % name, "wb") as fp:
         write_pmd(fp, targets)
 
     with open("%s.pz2" % name, "w") as fp:
         writeInjectionPoseFile(fp, name, targets)
+
+    if verbose:
+        print("Subdividing welded and morphed base mesh...")
+
+    subdWeldedMorphed = weldedWithDeltas
+    for i in range(subdLevel):
+        subdWeldedMorphed = subdivideMesh(subdWeldedMorphed)
+
+    if verbose:
+        print("Subdivided %d times." % subdLevel)
+
+    subdName = name + "_subd"
+    subdTarget = makeSubdTarget(
+        subdName, subdWeldedMorphed, morph, subdLevel, verbose
+    )
+
+    with open("%s.pmd" % subdName, "wb") as fp:
+        write_pmd(fp, [subdTarget])
+
+    with open("%s.pz2" % subdName, "w") as fp:
+        writeInjectionPoseFile(fp, subdName, [subdTarget])
 
 
 def loadMesh(path, verbose=False):
