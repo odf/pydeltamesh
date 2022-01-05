@@ -69,18 +69,8 @@ def run(basepath, weldedpath, morphpath, name, verbose):
 
     targets = makeMorphTargets(name, base, weldedWithDeltas, verbose)
 
-    if verbose:
-        print("Subdividing welded and morphed base mesh...")
-
-    subdWeldedMorphed = weldedWithDeltas
-    for i in range(subdLevel):
-        subdWeldedMorphed = subdivideMesh(subdWeldedMorphed)
-
-    if verbose:
-        print("Subdivided %d times." % subdLevel)
-
     targets.append(makeSubdTarget(
-        name, subdWeldedMorphed, morph, usedInMorph, subdLevel, verbose
+        name, weldedWithDeltas, morph, usedInMorph, subdLevel, verbose
     ))
 
     with open("%s.pmd" % name, "wb") as fp:
@@ -139,13 +129,20 @@ def makeMorphTargets(name, baseMesh, morphedMesh, verbose=False):
     return targets
 
 
-def makeSubdTarget(name, base, morph, mapping, subdLevel, verbose=False):
+def makeSubdTarget(name, baseSubd0, morph, mapping, subdLevel, verbose=False):
     from uuid import uuid4
+    from pydeltamesh.mesh.subd import subdivideMesh
     from pydeltamesh.io.pmd import Deltas, MorphTarget
 
-    actor = "BODY"
-    key = str(uuid4())
-    baseDeltas = Deltas(len(morph.vertices), [], [])
+    if verbose:
+        print("Subdividing welded base mesh after morphing...")
+
+    base = baseSubd0
+    for _ in range(subdLevel):
+        base = subdivideMesh(base)
+
+    if verbose:
+        print("Subdivided %d times." % subdLevel)
 
     subdDeltas = {}
 
@@ -153,6 +150,10 @@ def makeSubdTarget(name, base, morph, mapping, subdLevel, verbose=False):
         for level in range(1, subdLevel):
             subdDeltas[level] = Deltas(0, [], [])
         subdDeltas[subdLevel] = findSubdDeltas(base, morph, mapping, verbose)
+
+    actor = "BODY"
+    key = str(uuid4())
+    baseDeltas = Deltas(len(morph.vertices), [], [])
 
     return MorphTarget(name, actor, key, baseDeltas, subdDeltas)
 
