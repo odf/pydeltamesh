@@ -50,7 +50,7 @@ def run(basepath, weldedpath, morphpath, name, verbose):
     morph = loadMesh(morphpath, verbose)
 
     welded = expandNumbering(weldedRaw, usedVertices(morph))
-    subdLevel, weldedMorphed = bakeDownDeltas(welded, morph, verbose)
+    subdLevel, weldedMorphed = bakeDownMorph(welded, morph, verbose)
     targets = makeMorphTargets(name, base, weldedMorphed, verbose)
 
     targets.append(makeSubdTarget(
@@ -102,8 +102,11 @@ def expandNumbering(mesh, used):
     return mesh._replace(vertices=vertsOut, faces=facesOut)
 
 
-def bakeDownDeltas(base, morph, verbose=False):
+def bakeDownMorph(base, morph, verbose=False):
     from pydeltamesh.mesh.subd import subdivideMesh
+
+    if len(base.faces) == len(morph.faces):
+        return 0, morph
 
     if verbose:
         print("Subdividing for baking...")
@@ -168,17 +171,19 @@ def makeSubdTarget(name, baseSubd0, morph, subdLevel, verbose=False):
 
         base = subdivideMesh(base)
 
+        if verbose:
+            print("Finding deltas for level %d..." % level)
+
+        _, baseMorphed = bakeDownMorph(base, morph, verbose)
+
+        deltas, displacements = findSubdDeltas(base, baseMorphed)
+        subdDeltas[level] = deltas
+
+        if verbose:
+            print("Found %d deltas." % len(deltas.indices))
+
         if level < subdLevel:
-            subdDeltas[level] = Deltas(0, [], [])
-        else:
-            if verbose:
-                print("Finding deltas for level %d..." % level)
-
-            deltas, displacements = findSubdDeltas(base, morph)
-            subdDeltas[level] = deltas
-
-            if verbose:
-                print("Found %d deltas." % len(deltas.indices))
+            base.vertices[deltas.indices] += displacements
 
     return MorphTarget(name, actor, key, baseDeltas, subdDeltas)
 
