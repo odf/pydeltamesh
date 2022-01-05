@@ -167,15 +167,16 @@ def interpolatePerVertexData(vertexData, cx):
         subdData[i + cx.nrVertices + cx.nrFaces] = c
 
     for v in range(len(vertexData)):
-        if boundaryNeighbors.get(v) is None:
-            m = len(cx.vertexNeighbors(v))
+        m = len(cx.vertexNeighbors(v))
+
+        if m > 0 and boundaryNeighbors.get(v) is None:
             p = vertexData[v]
             r = _centroid(vertexData, cx.vertexNeighbors(v))
             f = _centroid(
                 subdData, (k + cx.nrVertices for k in cx.vertexFaces(v))
             )
             subdData[v] = (f + r + (m - 2) * p) / m
-        elif len(cx.vertexNeighbors(v)) < 3:
+        elif m < 3:
             subdData[v] = vertexData[v]
         else:
             p = vertexData[v]
