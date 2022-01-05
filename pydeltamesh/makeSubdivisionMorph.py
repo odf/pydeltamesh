@@ -1,3 +1,6 @@
+import numpy as _np
+
+
 def parseArguments():
     import argparse
 
@@ -43,16 +46,15 @@ def run(basepath, weldedpath, morphpath, name, verbose):
         name = os.path.splitext(os.path.split(morphpath)[1])[0]
 
     base = loadMesh(basepath, verbose)
-    welded = loadMesh(weldedpath, verbose)
+    weldedRaw = loadMesh(weldedpath, verbose)
     morph = loadMesh(morphpath, verbose)
-    usedInMorph = usedVertices(morph)
 
-    subdLevel, weldedWithDeltas = bakeDownDeltas(welded, morph, usedInMorph)
-
-    targets = makeMorphTargets(name, base, weldedWithDeltas, verbose)
+    welded = expandNumbering(weldedRaw, usedVertices(morph))
+    subdLevel, weldedMorphed = bakeDownDeltas(welded, morph, verbose)
+    targets = makeMorphTargets(name, base, weldedMorphed, verbose)
 
     targets.append(makeSubdTarget(
-        name, weldedWithDeltas, morph, usedInMorph, subdLevel, verbose
+        name, weldedMorphed, morph, subdLevel, verbose
     ))
 
     with open("%s.pmd" % name, "wb") as fp:
@@ -87,8 +89,24 @@ def usedVertices(mesh):
     return sorted(used)
 
 
-def bakeDownDeltas(base, morph, usedInMorph):
+def expandNumbering(mesh, used):
+    nv = len(mesh.vertices)
+    vertsOut = _np.zeros((used[nv - 1] + 1, 3))
+    for i in range(nv):
+        vertsOut[used[i]] = mesh.vertices[i]
+
+    facesOut = []
+    for f in mesh.faces:
+        facesOut.append(f._replace(vertices=[used[i] for i in f.vertices]))
+
+    return mesh._replace(vertices=vertsOut, faces=facesOut)
+
+
+def bakeDownDeltas(base, morph, verbose=False):
     from pydeltamesh.mesh.subd import subdivideMesh
+
+    if verbose:
+        print("Subdividing for baking...")
 
     baseSubdivided = base
     subdLevel = 0
@@ -96,9 +114,12 @@ def bakeDownDeltas(base, morph, usedInMorph):
         baseSubdivided = subdivideMesh(baseSubdivided)
         subdLevel += 1
 
+    if verbose:
+        print("Subdivided %d times." % subdLevel)
+
     baseVertsWithDeltas = (
         base.vertices
-        + morph.vertices[usedInMorph[: len(base.vertices)]]
+        + morph.vertices[: len(base.vertices)]
         - baseSubdivided.vertices[: len(base.vertices)]
     )
 
@@ -129,7 +150,7 @@ def makeMorphTargets(name, baseMesh, morphedMesh, verbose=False):
     return targets
 
 
-def makeSubdTarget(name, baseSubd0, morph, mapping, subdLevel, verbose=False):
+def makeSubdTarget(name, baseSubd0, morph, subdLevel, verbose=False):
     from uuid import uuid4
     from pydeltamesh.mesh.subd import subdivideMesh
     from pydeltamesh.io.pmd import Deltas, MorphTarget
@@ -153,7 +174,7 @@ def makeSubdTarget(name, baseSubd0, morph, mapping, subdLevel, verbose=False):
             if verbose:
                 print("Finding deltas for level %d..." % level)
 
-            deltas, displacements = findSubdDeltas(base, morph, mapping)
+            deltas, displacements = findSubdDeltas(base, morph)
             subdDeltas[level] = deltas
 
             if verbose:
@@ -217,7 +238,7 @@ def findDeltas(base, morph):
         return None
 
 
-def findSubdDeltas(base, morph, mapping):
+def findSubdDeltas(base, morph):
     from pydeltamesh.io.pmd import Deltas
 
     nv = 1 + max(max(f.vertices) for f in base.faces)
@@ -237,7 +258,7 @@ def findSubdDeltas(base, morph, mapping):
     displacements = []
 
     for v in range(len(base.vertices)):
-        d = morph.vertices[mapping[v]] - base.vertices[v]
+        d = morph.vertices[v] - base.vertices[v]
 
         if norm(d) > 1e-5:
             p = base.vertices[v]
@@ -246,7 +267,7 @@ def findSubdDeltas(base, morph, mapping):
             n = vertexNormal(p, qs, rs)
             delta = dot(d, n)
 
-            deltaIndices.append(mapping[v])
+            deltaIndices.append(v)
             deltaVectors.append([delta, 0.0, 0.0])
             displacements.append([delta * x for x in n])
 
