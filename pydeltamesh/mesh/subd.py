@@ -80,12 +80,18 @@ class Complex(object):
 def subdivideMesh(mesh):
     from pydeltamesh.io.obj import Face, Mesh
 
+    skipUVs = len(mesh.texverts) == 0
+
     verticesOut, faceVerticesOut = subdivide(
         mesh.vertices, [f.vertices for f in mesh.faces]
     )
-    texVertsOut, faceTexVertsOut = subdivide(
-        mesh.texverts, [f.texverts for f in mesh.faces]
-    )
+
+    if skipUVs:
+        texVertsOut = []
+    else:
+        texVertsOut, faceTexVertsOut = subdivide(
+            mesh.texverts, [f.texverts for f in mesh.faces]
+        )
 
     mapping = []
     for i, f in enumerate(mesh.faces):
@@ -97,7 +103,7 @@ def subdivideMesh(mesh):
         f = mesh.faces[mapping[i]]
         facesOut.append(Face(
             vertices=faceVerticesOut[i],
-            texverts=faceTexVertsOut[i],
+            texverts=([] if skipUVs else faceTexVertsOut[i]),
             normals=None,
             object=f.object,
             group=f.group,
