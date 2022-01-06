@@ -1,3 +1,6 @@
+import numpy as _np
+
+
 class Complex(object):
     def __init__(self, faces):
         nv = 1 + max(max(f) for f in faces)
@@ -148,48 +151,93 @@ def subdivideTopology(cx):
 
 
 def interpolatePerVertexData(vertexData, cx):
-    import numpy as np
-
-    nrSubdVerts = cx.nrVertices + cx.nrFaces + cx.nrEdges
-    subdData = np.zeros((nrSubdVerts, vertexData.shape[1]))
-
-    for i, f in enumerate(cx.faces):
-        subdData[i + cx.nrVertices] = _centroid(vertexData, f)
-
     boundaryNeighbors = {}
-
     for i in range(cx.nrEdges):
-        u, v = cx.edgeVertices(i)
-        c = (vertexData[u] + vertexData[v]) / 2
-        if len(cx.edgeFaces(i)) == 2:
-            c += _centroid(
-                subdData, (k + cx.nrVertices for k in cx.edgeFaces(i))
-            )
-            c /= 2
-        else:
-            boundaryNeighbors.setdefault(u, set()).add(v)
-            boundaryNeighbors.setdefault(v, set()).add(u)
+        if len(cx.edgeFaces(i)) != 2:
+            u, v = cx.edgeVertices(i)
 
-        subdData[i + cx.nrVertices + cx.nrFaces] = c
+            if not v in boundaryNeighbors.setdefault(u, []):
+                boundaryNeighbors[u].append(v)
+            if not u in boundaryNeighbors.setdefault(v, []):
+                boundaryNeighbors[v].append(u)
 
-    for v in range(len(vertexData)):
+    fstart = cx.nrVertices
+    estart = fstart + cx.nrFaces
+    subdData = _np.zeros((estart + cx.nrEdges, vertexData.shape[1]))
+
+    subdData[: fstart] = vertexData # temporary, adjust later
+    subdData[fstart: estart] = faceCenters(vertexData, cx.faces)
+    subdData[estart:] = edgePoints(subdData, cx)
+    subdData[: fstart] = adjustedVertices(subdData, cx, boundaryNeighbors)
+
+    return subdData
+
+
+def faceCenters(vertices, faces):
+    centers = _np.zeros((len(faces), vertices.shape[1]))
+
+    facesByDegree = {}
+    for i in range(len(faces)):
+        facesByDegree.setdefault(len(faces[i]), []).append(i)
+
+    for d in facesByDegree:
+        idcs = facesByDegree[d]
+        vs = [faces[i] for i in idcs]
+        centers[idcs] = _np.sum(vertices[vs], axis=1) / d
+
+    return centers
+
+
+def edgePoints(pointData, cx):
+    vs = [cx.edgeVertices(i) for i in range(cx.nrEdges)]
+    output = _np.sum(pointData[vs], axis=1) / 2.0
+
+    interior = [i for i in range(cx.nrEdges) if len(cx.edgeFaces(i)) == 2]
+    ws = [_np.add(cx.edgeFaces(i), cx.nrVertices) for i in interior]
+    output[interior] += _np.sum(pointData[ws], axis=1) / 2.0
+    output[interior] /= 2.0
+
+    return output
+
+
+def adjustedVertices(pointData, cx, boundaryNeighbors):
+    output = pointData[: cx.nrVertices].copy()
+
+    unchanged = []
+    boundary = []
+    interiorByDegree = {}
+
+    for v in range(cx.nrVertices):
         m = len(cx.vertexNeighbors(v))
 
         if m > 0 and boundaryNeighbors.get(v) is None:
-            p = vertexData[v]
-            r = _centroid(vertexData, cx.vertexNeighbors(v))
-            f = _centroid(
-                subdData, (k + cx.nrVertices for k in cx.vertexFaces(v))
-            )
-            subdData[v] = (f + r + (m - 2) * p) / m
+            interiorByDegree.setdefault(m, []).append(v)
         elif m < 3:
-            subdData[v] = vertexData[v]
+            unchanged.append(v)
         else:
-            p = vertexData[v]
-            r = _centroid(vertexData, boundaryNeighbors[v])
-            subdData[v] = (3 * p + r) / 4
+            boundary.append(v)
 
-    return subdData
+    ps = pointData[[boundaryNeighbors[v] for v in boundary]]
+    output[boundary] = (
+        0.75 * pointData[boundary] + 0.125 * _np.sum(ps, axis=1)
+    )
+
+    for d in interiorByDegree:
+        idcs = interiorByDegree[d]
+
+        p = pointData[idcs]
+
+        vs = _np.array([cx.vertexNeighbors(v) for v in idcs])
+        r = _np.sum(pointData[vs], axis=1) / (d**2)
+
+        ws = _np.array([
+            _np.add(cx.vertexFaces(v), cx.nrVertices) for v in idcs
+        ])
+        f = _np.sum(pointData[ws], axis=1) / (d**2)
+
+        output[idcs] = f + r + (d - 2) / d * p
+
+    return output
 
 
 def _cyclicPairs(items):
