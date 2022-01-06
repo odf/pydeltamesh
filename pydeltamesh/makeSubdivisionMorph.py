@@ -71,7 +71,7 @@ def loadMesh(path, verbose=False):
         print("Loading mesh from %s..." % path)
 
     with open(path) as fp:
-        data = obj.load(fp, path)
+        data = obj.load(fp, path, skipNormals=True, skipUVs=True)
 
     if verbose:
         print("Loaded mesh with %d vertices and %d faces." % (
