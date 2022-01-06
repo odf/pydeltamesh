@@ -244,17 +244,6 @@ def _cyclicPairs(items):
     return zip(items, items[1:] + items[:1])
 
 
-def _centroid(data, indices):
-    count = 0
-    sum = None
-
-    for i in indices:
-        sum = sum + data[i] if sum is not None else data[i]
-        count += 1
-
-    return sum / count
-
-
 if __name__ == "__main__":
     import sys
     from os.path import dirname
