@@ -22,7 +22,7 @@ Mesh = namedtuple(
 )
 
 
-def load(fp, path=None):
+def load(fp, path=None, skipNormals=False, skipUVs=False):
     import os.path
     dir = None if path is None else os.path.dirname(os.path.abspath(path))
 
@@ -56,9 +56,9 @@ def load(fp, path=None):
                 loadmaterials(f, materials)
         elif cmd == 'v':
             vertices.append([float(pars[0]), float(pars[1]), float(pars[2])])
-        elif cmd == 'vt':
+        elif cmd == 'vt' and not skipUVs:
             texverts.append([float(pars[0]), float(pars[1])])
-        elif cmd == 'vn':
+        elif cmd == 'vn' and not skipNormals:
             normals.append([float(pars[0]), float(pars[1]), float(pars[2])])
         elif cmd == 'o':
             obj = pars[0]
@@ -75,12 +75,17 @@ def load(fp, path=None):
 
             for i in range(len(pars)):
                 idcs = pars[i].split('/')
+
                 v = int(idcs[0]) if len(idcs) > 0 and idcs[0] else 0
-                vt = int(idcs[1]) if len(idcs) > 1 and idcs[1] else 0
-                vn = int(idcs[2]) if len(idcs) > 2 and idcs[2] else 0
                 fv.append(v + (len(vertices) if v < 0 else -1))
-                ft.append(vt + (len(texverts) if vt < 0 else -1))
-                fn.append(vn + (len(normals) if vn < 0 else -1))
+
+                if not skipUVs:
+                    vt = int(idcs[1]) if len(idcs) > 1 and idcs[1] else 0
+                    ft.append(vt + (len(texverts) if vt < 0 else -1))
+
+                if not skipNormals:
+                    vn = int(idcs[2]) if len(idcs) > 2 and idcs[2] else 0
+                    fn.append(vn + (len(normals) if vn < 0 else -1))
 
             faces.append(Face(
                 vertices=fv,
