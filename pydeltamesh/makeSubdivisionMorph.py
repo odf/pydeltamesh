@@ -116,7 +116,9 @@ def expandNumbering(mesh, used):
 
 
 def bakeDownMorph(baseVerts, morphVerts, complexes, verbose=False):
-    from pydeltamesh.mesh.subd import interpolatePerVertexData
+    from pydeltamesh.mesh.subd import (
+        adjustVertexData, interpolatePerVertexData
+    )
 
     if len(complexes) == 0:
         return morphVerts
@@ -127,8 +129,9 @@ def bakeDownMorph(baseVerts, morphVerts, complexes, verbose=False):
     n = len(baseVerts)
 
     verts = baseVerts
-    for cx in complexes:
-        verts = interpolatePerVertexData(verts, cx)
+    for i in range(len(complexes) - 1):
+        verts = interpolatePerVertexData(verts, complexes[i])
+    verts = adjustVertexData(verts, complexes[-1])
 
     if verbose:
         print("Subdivided %d times." % len(complexes))

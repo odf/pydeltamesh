@@ -165,14 +165,19 @@ def subdivideTopology(cx):
 
 
 def interpolatePerVertexData(vertexData, cx):
-    fPoints = faceCenters(vertexData, cx)
-    vPoints = adjustedVertices(vertexData, fPoints, cx)
-    ePoints = edgePoints(vertexData, fPoints, cx)
+    fPoints = _faceCenters(vertexData, cx)
+    vPoints = _adjustedVertices(vertexData, fPoints, cx)
+    ePoints = _edgePoints(vertexData, fPoints, cx)
 
     return _np.vstack([vPoints, fPoints, ePoints])
 
 
-def faceCenters(vertices, cx):
+def adjustVertexData(vertexData, cx):
+    fPoints = _faceCenters(vertexData, cx)
+    return _adjustedVertices(vertexData, fPoints, cx)
+
+
+def _faceCenters(vertices, cx):
     centers = _np.zeros((len(cx.faces), vertices.shape[1]))
 
     facesByDegree = {}
@@ -187,7 +192,7 @@ def faceCenters(vertices, cx):
     return centers
 
 
-def edgePoints(vertexData, fPoints, cx):
+def _edgePoints(vertexData, fPoints, cx):
     vs = [cx.edgeVertices(i) for i in range(cx.nrEdges)]
     output = _np.sum(vertexData[vs], axis=1) / 2.0
 
@@ -199,7 +204,7 @@ def edgePoints(vertexData, fPoints, cx):
     return output
 
 
-def adjustedVertices(vertexData, fPoints, cx):
+def _adjustedVertices(vertexData, fPoints, cx):
     output = vertexData.copy()
 
     unchanged = []
