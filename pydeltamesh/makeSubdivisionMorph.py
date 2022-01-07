@@ -262,6 +262,31 @@ def findDeltas(base, morph):
 def findSubdDeltas(baseVertices, morphedVertices, faces):
     from pydeltamesh.io.pmd import Deltas
 
+    before, after = angleNeighbors(faces)
+
+    diffs = morphedVertices[: len(baseVertices)] - baseVertices
+    norms = _np.sqrt(_np.sum(diffs * diffs, axis=1))
+    deltaIndices = _np.where(norms > 1e-5)[0]
+
+    deltaVectors = []
+    displacements = []
+
+    for v in deltaIndices:
+        p = baseVertices[v]
+        qs = baseVertices[after[v]]
+        rs = baseVertices[before[v]]
+        n = vertexNormal(p, qs, rs)
+        delta = dot(diffs[v], n)
+
+        deltaVectors.append([delta, 0.0, 0.0])
+        displacements.append([delta * x for x in n])
+
+    deltas = Deltas(len(baseVertices), deltaIndices, deltaVectors)
+
+    return deltas, displacements
+
+
+def angleNeighbors(faces):
     nv = 1 + max(max(f) for f in faces)
 
     before = [[] for _ in range(nv)]
@@ -273,28 +298,7 @@ def findSubdDeltas(baseVertices, morphedVertices, faces):
             w = f[i]
             before[v].append(u)
             after[v].append(w)
-
-    deltaIndices = []
-    deltaVectors = []
-    displacements = []
-
-    for v in range(len(baseVertices)):
-        d = morphedVertices[v] - baseVertices[v]
-
-        if norm(d) > 1e-5:
-            p = baseVertices[v]
-            qs = baseVertices[after[v]]
-            rs = baseVertices[before[v]]
-            n = vertexNormal(p, qs, rs)
-            delta = dot(d, n)
-
-            deltaIndices.append(v)
-            deltaVectors.append([delta, 0.0, 0.0])
-            displacements.append([delta * x for x in n])
-
-    deltas = Deltas(len(baseVertices), deltaIndices, deltaVectors)
-
-    return deltas, displacements
+    return before,after
 
 
 def vertexNormal(p, qs, rs):
