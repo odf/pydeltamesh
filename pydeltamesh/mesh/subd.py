@@ -36,6 +36,16 @@ class Complex(object):
                 if i not in facesAtEdge[k]:
                     facesAtEdge[k].append(i)
 
+        boundaryNeighbors = {}
+        for i in range(len(facesAtEdge)):
+            if len(facesAtEdge[i]) != 2:
+                u, v = vertsAtEdge[i]
+
+                if not v in boundaryNeighbors.setdefault(u, []):
+                    boundaryNeighbors[u].append(v)
+                if not u in boundaryNeighbors.setdefault(v, []):
+                    boundaryNeighbors[v].append(u)
+
         self._faces = faces
 
         self._nrVertices = nv
@@ -43,6 +53,7 @@ class Complex(object):
         self._nrEdges = len(facesAtEdge)
 
         self._vertexNeighbors = neighbors
+        self._boundaryNeighbors = boundaryNeighbors
         self._vertexFaces = facesAtVert
         self._edgeVertices = vertsAtEdge
         self._edgeFaces = facesAtEdge
@@ -66,6 +77,9 @@ class Complex(object):
 
     def vertexNeighbors(self, v):
         return self._vertexNeighbors[v]
+
+    def boundaryNeighbors(self, v):
+        return self._boundaryNeighbors.get(v)
 
     def vertexFaces(self, v):
         return self._vertexFaces[v]
@@ -151,57 +165,42 @@ def subdivideTopology(cx):
 
 
 def interpolatePerVertexData(vertexData, cx):
-    boundaryNeighbors = {}
-    for i in range(cx.nrEdges):
-        if len(cx.edgeFaces(i)) != 2:
-            u, v = cx.edgeVertices(i)
+    fPoints = faceCenters(vertexData, cx)
+    vPoints = adjustedVertices(vertexData, fPoints, cx)
+    ePoints = edgePoints(vertexData, fPoints, cx)
 
-            if not v in boundaryNeighbors.setdefault(u, []):
-                boundaryNeighbors[u].append(v)
-            if not u in boundaryNeighbors.setdefault(v, []):
-                boundaryNeighbors[v].append(u)
-
-    fstart = cx.nrVertices
-    estart = fstart + cx.nrFaces
-    subdData = _np.zeros((estart + cx.nrEdges, vertexData.shape[1]))
-
-    subdData[: fstart] = vertexData # temporary, adjust later
-    subdData[fstart: estart] = faceCenters(vertexData, cx.faces)
-    subdData[estart:] = edgePoints(subdData, cx)
-    subdData[: fstart] = adjustedVertices(subdData, cx, boundaryNeighbors)
-
-    return subdData
+    return _np.vstack([vPoints, fPoints, ePoints])
 
 
-def faceCenters(vertices, faces):
-    centers = _np.zeros((len(faces), vertices.shape[1]))
+def faceCenters(vertices, cx):
+    centers = _np.zeros((len(cx.faces), vertices.shape[1]))
 
     facesByDegree = {}
-    for i in range(len(faces)):
-        facesByDegree.setdefault(len(faces[i]), []).append(i)
+    for i in range(len(cx.faces)):
+        facesByDegree.setdefault(len(cx.faces[i]), []).append(i)
 
     for d in facesByDegree:
         idcs = facesByDegree[d]
-        vs = [faces[i] for i in idcs]
+        vs = [cx.faces[i] for i in idcs]
         centers[idcs] = _np.sum(vertices[vs], axis=1) / d
 
     return centers
 
 
-def edgePoints(pointData, cx):
+def edgePoints(vertexData, fPoints, cx):
     vs = [cx.edgeVertices(i) for i in range(cx.nrEdges)]
-    output = _np.sum(pointData[vs], axis=1) / 2.0
+    output = _np.sum(vertexData[vs], axis=1) / 2.0
 
     interior = [i for i in range(cx.nrEdges) if len(cx.edgeFaces(i)) == 2]
-    ws = [_np.add(cx.edgeFaces(i), cx.nrVertices) for i in interior]
-    output[interior] += _np.sum(pointData[ws], axis=1) / 2.0
+    ws = [cx.edgeFaces(i) for i in interior]
+    output[interior] += _np.sum(fPoints[ws], axis=1) / 2.0
     output[interior] /= 2.0
 
     return output
 
 
-def adjustedVertices(pointData, cx, boundaryNeighbors):
-    output = pointData[: cx.nrVertices].copy()
+def adjustedVertices(vertexData, fPoints, cx):
+    output = vertexData.copy()
 
     unchanged = []
     boundary = []
@@ -210,30 +209,28 @@ def adjustedVertices(pointData, cx, boundaryNeighbors):
     for v in range(cx.nrVertices):
         m = len(cx.vertexNeighbors(v))
 
-        if m > 0 and boundaryNeighbors.get(v) is None:
+        if m > 0 and cx.boundaryNeighbors(v) is None:
             interiorByDegree.setdefault(m, []).append(v)
         elif m < 3:
             unchanged.append(v)
         else:
             boundary.append(v)
 
-    ps = pointData[[boundaryNeighbors[v] for v in boundary]]
+    ps = vertexData[[cx.boundaryNeighbors(v) for v in boundary]]
     output[boundary] = (
-        0.75 * pointData[boundary] + 0.125 * _np.sum(ps, axis=1)
+        0.75 * vertexData[boundary] + 0.125 * _np.sum(ps, axis=1)
     )
 
     for d in interiorByDegree:
         idcs = interiorByDegree[d]
 
-        p = pointData[idcs]
+        p = vertexData[idcs]
 
         vs = _np.array([cx.vertexNeighbors(v) for v in idcs])
-        r = _np.sum(pointData[vs], axis=1) / (d**2)
+        r = _np.sum(vertexData[vs], axis=1) / (d**2)
 
-        ws = _np.array([
-            _np.add(cx.vertexFaces(v), cx.nrVertices) for v in idcs
-        ])
-        f = _np.sum(pointData[ws], axis=1) / (d**2)
+        ws = _np.array([cx.vertexFaces(v) for v in idcs])
+        f = _np.sum(fPoints[ws], axis=1) / (d**2)
 
         output[idcs] = f + r + (d - 2) / d * p
 
