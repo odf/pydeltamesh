@@ -1,5 +1,6 @@
 from re import sub
 import numpy as _np
+from numpy.lib.function_base import diff
 
 
 def parseArguments():
@@ -268,18 +269,18 @@ def findSubdDeltas(baseVertices, morphedVertices, faces):
     norms = _np.sqrt(_np.sum(diffs * diffs, axis=1))
     deltaIndices = _np.where(norms > 1e-5)[0]
 
-    deltaVectors = []
-    displacements = []
+    normals = [
+        vertexNormal(
+            baseVertices[v],
+            baseVertices[after[v]],
+            baseVertices[before[v]]
+        )
+        for v in deltaIndices
+    ]
 
-    for v in deltaIndices:
-        p = baseVertices[v]
-        qs = baseVertices[after[v]]
-        rs = baseVertices[before[v]]
-        n = vertexNormal(p, qs, rs)
-        delta = dot(diffs[v], n)
-
-        deltaVectors.append([delta, 0.0, 0.0])
-        displacements.append([delta * x for x in n])
+    diffsAlongNormals = _np.sum(diffs[deltaIndices] * normals, axis=1)
+    deltaVectors = diffsAlongNormals[:, None] * [1, 0, 0]
+    displacements = diffsAlongNormals[:, None] * normals
 
     deltas = Deltas(len(baseVertices), deltaIndices, deltaVectors)
 
@@ -311,10 +312,6 @@ def vertexNormal(p, qs, rs):
         normal[2] += n[2]
 
     return normalized(normal)
-
-
-def dot(v, w):
-    return sum(x * y for x, y in zip(v, w))
 
 
 def cross(v, w):
