@@ -1,3 +1,4 @@
+from re import sub
 import numpy as _np
 
 
@@ -41,6 +42,7 @@ def parseArguments():
 def run(basepath, weldedpath, morphpath, name, verbose):
     import os.path
     from pydeltamesh.io.pmd import write_pmd
+    from pydeltamesh.mesh.subd import Complex, subdivideTopology
 
     if name is None:
         name = os.path.splitext(os.path.split(morphpath)[1])[0]
@@ -50,11 +52,22 @@ def run(basepath, weldedpath, morphpath, name, verbose):
     morph = loadMesh(morphpath, verbose)
 
     welded = expandNumbering(weldedRaw, usedVertices(morph))
-    subdLevel, weldedMorphed = bakeDownMorph(welded, morph, verbose)
+
+    faces = [f.vertices for f in welded.faces]
+    complexes = []
+    while len(faces) < len(morph.faces):
+        cx = Complex(faces)
+        complexes.append(cx)
+        faces = subdivideTopology(cx)
+
+    vertsMorphed = bakeDownMorph(
+        welded.vertices, morph.vertices, complexes, verbose
+    )
+    weldedMorphed = welded._replace(vertices=vertsMorphed)
     targets = makeMorphTargets(name, base, weldedMorphed, verbose)
 
     targets.append(makeSubdTarget(
-        name, weldedMorphed, morph, subdLevel, verbose
+        name, weldedMorphed, morph, complexes, verbose
     ))
 
     with open("%s.pmd" % name, "wb") as fp:
@@ -102,31 +115,25 @@ def expandNumbering(mesh, used):
     return mesh._replace(vertices=vertsOut, faces=facesOut)
 
 
-def bakeDownMorph(base, morph, verbose=False):
-    from pydeltamesh.mesh.subd import subdivideMesh
+def bakeDownMorph(baseVerts, morphVerts, complexes, verbose=False):
+    from pydeltamesh.mesh.subd import interpolatePerVertexData
 
-    if len(base.faces) == len(morph.faces):
-        return 0, morph
+    if len(complexes) == 0:
+        return morphVerts
 
     if verbose:
         print("Subdividing for baking...")
 
-    baseSubdivided = base
-    subdLevel = 0
-    while len(baseSubdivided.faces) < len(morph.faces):
-        baseSubdivided = subdivideMesh(baseSubdivided)
-        subdLevel += 1
+    n = len(baseVerts)
+
+    verts = baseVerts
+    for cx in complexes:
+        verts = interpolatePerVertexData(verts, cx)
 
     if verbose:
-        print("Subdivided %d times." % subdLevel)
+        print("Subdivided %d times." % len(complexes))
 
-    baseVertsWithDeltas = (
-        base.vertices
-        + morph.vertices[: len(base.vertices)]
-        - baseSubdivided.vertices[: len(base.vertices)]
-    )
-
-    return subdLevel, base._replace(vertices = baseVertsWithDeltas)
+    return baseVerts + morphVerts[: n] - verts[: n]
 
 
 def makeMorphTargets(name, baseMesh, morphedMesh, verbose=False):
@@ -153,9 +160,11 @@ def makeMorphTargets(name, baseMesh, morphedMesh, verbose=False):
     return targets
 
 
-def makeSubdTarget(name, baseSubd0, morph, subdLevel, verbose=False):
+def makeSubdTarget(name, baseSubd0, morph, complexes, verbose=False):
     from uuid import uuid4
-    from pydeltamesh.mesh.subd import subdivideMesh
+    from pydeltamesh.mesh.subd import (
+        interpolatePerVertexData, subdivideTopology
+    )
     from pydeltamesh.io.pmd import Deltas, MorphTarget
 
     actor = "BODY"
@@ -163,27 +172,31 @@ def makeSubdTarget(name, baseSubd0, morph, subdLevel, verbose=False):
     baseDeltas = Deltas(len(morph.vertices), [], [])
     subdDeltas = {}
 
-    base = baseSubd0
+    subdLevel = len(complexes)
+    verts = baseSubd0.vertices
 
     for level in range(1, subdLevel + 1):
         if verbose:
             print("Subdividing morph for level %d..." % level)
 
-        base = subdivideMesh(base)
+        verts = interpolatePerVertexData(verts, complexes[level - 1])
+        faces = subdivideTopology(complexes[level - 1])
 
         if verbose:
             print("Finding deltas for level %d..." % level)
 
-        _, baseMorphed = bakeDownMorph(base, morph, verbose)
+        morphedVerts = bakeDownMorph(
+            verts, morph.vertices, complexes[level:], verbose
+        )
 
-        deltas, displacements = findSubdDeltas(base, baseMorphed)
+        deltas, displacements = findSubdDeltas(verts, morphedVerts, faces)
         subdDeltas[level] = deltas
 
         if verbose:
             print("Found %d deltas." % len(deltas.indices))
 
         if level < subdLevel:
-            base.vertices[deltas.indices] += displacements
+            verts[deltas.indices] += displacements
 
     return MorphTarget(name, actor, key, baseDeltas, subdDeltas)
 
@@ -243,18 +256,18 @@ def findDeltas(base, morph):
         return None
 
 
-def findSubdDeltas(base, morph):
+def findSubdDeltas(baseVertices, morphedVertices, faces):
     from pydeltamesh.io.pmd import Deltas
 
-    nv = 1 + max(max(f.vertices) for f in base.faces)
+    nv = 1 + max(max(f) for f in faces)
 
     before = [[] for _ in range(nv)]
     after = [[] for _ in range(nv)]
-    for f in base.faces:
-        for i in range(len(f.vertices)):
-            u = f.vertices[i - 2]
-            v = f.vertices[i - 1]
-            w = f.vertices[i]
+    for f in faces:
+        for i in range(len(f)):
+            u = f[i - 2]
+            v = f[i - 1]
+            w = f[i]
             before[v].append(u)
             after[v].append(w)
 
@@ -262,13 +275,13 @@ def findSubdDeltas(base, morph):
     deltaVectors = []
     displacements = []
 
-    for v in range(len(base.vertices)):
-        d = morph.vertices[v] - base.vertices[v]
+    for v in range(len(baseVertices)):
+        d = morphedVertices[v] - baseVertices[v]
 
         if norm(d) > 1e-5:
-            p = base.vertices[v]
-            qs = base.vertices[after[v]]
-            rs = base.vertices[before[v]]
+            p = baseVertices[v]
+            qs = baseVertices[after[v]]
+            rs = baseVertices[before[v]]
             n = vertexNormal(p, qs, rs)
             delta = dot(d, n)
 
@@ -276,7 +289,7 @@ def findSubdDeltas(base, morph):
             deltaVectors.append([delta, 0.0, 0.0])
             displacements.append([delta * x for x in n])
 
-    deltas = Deltas(len(morph.vertices), deltaIndices, deltaVectors)
+    deltas = Deltas(len(baseVertices), deltaIndices, deltaVectors)
 
     return deltas, displacements
 
