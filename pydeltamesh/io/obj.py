@@ -55,11 +55,11 @@ def load(fp, path=None, skipNormals=False, skipUVs=False):
             with open(mtlpath) as f:
                 loadmaterials(f, materials)
         elif cmd == 'v':
-            vertices.append([float(pars[0]), float(pars[1]), float(pars[2])])
+            vertices.append([float(s) for s in pars])
         elif cmd == 'vt' and not skipUVs:
-            texverts.append([float(pars[0]), float(pars[1])])
+            texverts.append([float(s) for s in pars])
         elif cmd == 'vn' and not skipNormals:
-            normals.append([float(pars[0]), float(pars[1]), float(pars[2])])
+            normals.append([float(s) for s in pars])
         elif cmd == 'o':
             obj = pars[0]
         elif cmd == 'g':
@@ -73,19 +73,31 @@ def load(fp, path=None, skipNormals=False, skipUVs=False):
             ft = []
             fn = []
 
-            for i in range(len(pars)):
-                idcs = pars[i].split('/')
+            if skipUVs and skipNormals:
+                for i in range(len(pars)):
+                    s = pars[i]
+                    if not '/' in s:
+                        fv.append(0)
+                    else:
+                        d = int(s[: s.find('/')])
+                        if d < 0:
+                            fv.append(len(vertices) + d)
+                        else:
+                            fv.append(d - 1)
+            else:
+                for i in range(len(pars)):
+                    idcs = pars[i].split('/')
 
-                v = int(idcs[0]) if len(idcs) > 0 and idcs[0] else 0
-                fv.append(v + (len(vertices) if v < 0 else -1))
+                    v = int(idcs[0]) if len(idcs) > 0 and idcs[0] else 0
+                    fv.append(v + (len(vertices) if v < 0 else -1))
 
-                if not skipUVs:
-                    vt = int(idcs[1]) if len(idcs) > 1 and idcs[1] else 0
-                    ft.append(vt + (len(texverts) if vt < 0 else -1))
+                    if not skipUVs:
+                        vt = int(idcs[1]) if len(idcs) > 1 and idcs[1] else 0
+                        ft.append(vt + (len(texverts) if vt < 0 else -1))
 
-                if not skipNormals:
-                    vn = int(idcs[2]) if len(idcs) > 2 and idcs[2] else 0
-                    fn.append(vn + (len(normals) if vn < 0 else -1))
+                    if not skipNormals:
+                        vn = int(idcs[2]) if len(idcs) > 2 and idcs[2] else 0
+                        fn.append(vn + (len(normals) if vn < 0 else -1))
 
             faces.append(Face(
                 vertices=fv,
