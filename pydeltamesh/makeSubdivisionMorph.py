@@ -211,7 +211,8 @@ def makeSubdTarget(name, baseSubd0, morph, complexes, verbose=False):
             verts, morph.vertices, complexes[level:], verbose
         )
 
-        deltas, displacements = findSubdDeltas(verts, morphedVerts, faces)
+        normals = vertexNormals(verts, faces)
+        deltas, displacements = findSubdDeltas(verts, morphedVerts, normals)
         subdDeltas[level] = deltas
 
         if verbose:
@@ -278,75 +279,39 @@ def findDeltas(base, morph):
         return None
 
 
-def findSubdDeltas(baseVertices, morphedVertices, faces):
+def findSubdDeltas(baseVertices, morphedVertices, normals):
     from pydeltamesh.io.pmd import Deltas
 
-    before, after = angleNeighbors(faces)
-
     diffs = morphedVertices[: len(baseVertices)] - baseVertices
-    norms = _np.sqrt(_np.sum(diffs * diffs, axis=1))
-    deltaIndices = _np.where(norms > 1e-5)[0]
-
-    normals = [
-        vertexNormal(
-            baseVertices[v],
-            baseVertices[after[v]],
-            baseVertices[before[v]]
-        )
-        for v in deltaIndices
-    ]
-
-    diffsAlongNormals = _np.sum(diffs[deltaIndices] * normals, axis=1)
+    dists = _np.sqrt(_np.sum(diffs * diffs, axis=1))
+    idcs = _np.where(dists > 1e-5)[0]
+    diffsAlongNormals = _np.sum(diffs[idcs] * normals[idcs], axis=1)
     deltaVectors = diffsAlongNormals[:, None] * [1, 0, 0]
-    displacements = diffsAlongNormals[:, None] * normals
+    displacements = diffsAlongNormals[:, None] * normals[idcs]
 
-    deltas = Deltas(len(baseVertices), deltaIndices, deltaVectors)
+    deltas = Deltas(len(baseVertices), idcs, deltaVectors)
 
     return deltas, displacements
 
 
-def angleNeighbors(faces):
-    nv = 1 + max(max(f) for f in faces)
+def vertexNormals(vertices, faces):
+    vs = _np.array(vertices)
+    fs = _np.array(faces)
+    ns = _np.zeros_like(vs)
 
-    before = [[] for _ in range(nv)]
-    after = [[] for _ in range(nv)]
-    for f in faces:
-        for i in range(len(f)):
-            u = f[i - 2]
-            v = f[i - 1]
-            w = f[i]
-            before[v].append(u)
-            after[v].append(w)
-    return before,after
+    for i in range(fs.shape[1]):
+        ps = fs[:, i - 2]
+        qs = fs[:, i - 1]
+        rs = fs[:, i]
 
+        ns[qs] += _np.cross(vs[qs] - vs[ps], vs[rs] - vs[qs])
 
-def vertexNormal(p, qs, rs):
-    normal = [0.0, 0.0, 0.0]
-
-    for i in range(len(qs)):
-        n = cross(qs[i] - p, rs[i] - p)
-        normal[0] += n[0]
-        normal[1] += n[1]
-        normal[2] += n[2]
-
-    return normalized(normal)
-
-
-def cross(v, w):
-    return [
-        v[1] * w[2] - v[2] * w[1],
-        v[2] * w[0] - v[0] * w[2],
-        v[0] * w[1] - v[1] * w[0]
-    ]
+    ds = _np.sqrt(_np.sum(ns * ns, axis=1)).reshape(-1, 1)
+    return ns / ds
 
 
 def norm(v):
     return sum(x * x for x in v)**0.5
-
-
-def normalized(v):
-    n = norm(v)
-    return [x / n for x in v] if n > 0 else v
 
 
 def writeInjectionPoseFile(fp, name, targets):
