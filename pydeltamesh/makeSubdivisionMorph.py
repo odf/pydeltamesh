@@ -3,9 +3,7 @@ import numpy as _np
 from collections import namedtuple as _namedtuple
 
 
-Face = _namedtuple("Face", [ "vertices", "group" ])
-
-Mesh = _namedtuple("Mesh", [ "vertices", "faces" ])
+Mesh = _namedtuple("Mesh", [ "vertices", "faces", "faceGroups" ])
 
 
 def parseArguments():
@@ -59,7 +57,7 @@ def run(basepath, weldedpath, morphpath, name, verbose):
 
     welded = expandNumbering(weldedRaw, usedVertices(morph))
 
-    faces = [f.vertices for f in welded.faces]
+    faces = welded.faces
     complexes = []
     while len(faces) < len(morph.faces):
         cx = Complex(faces)
@@ -90,6 +88,7 @@ def loadMesh(path, verbose=False):
     with open(path) as fp:
         vertices = []
         faces = []
+        faceGroups = []
         group = None
 
         for line in fp:
@@ -100,7 +99,8 @@ def loadMesh(path, verbose=False):
             elif fields[0] == 'f':
                 ns = [ int(s[: s.find('/')]) for s in fields[1:] ]
                 vs = [ n - 1 if n > 0 else len(vertices) + n for n in ns]
-                faces.append(Face(vs, group))
+                faces.append(vs)
+                faceGroups.append(group)
             elif fields[0] == 'g':
                 group = fields[1]
             elif fields[0] == 'v':
@@ -111,14 +111,13 @@ def loadMesh(path, verbose=False):
             len(vertices), len(faces)
         ))
 
-    return Mesh(_np.array(vertices), faces)
+    return Mesh(_np.array(vertices), faces, faceGroups)
 
 
 def usedVertices(mesh):
     used = set()
     for f in mesh.faces:
-        for v in f.vertices:
-            used.add(v)
+        used.update(f)
     return sorted(used)
 
 
@@ -130,7 +129,7 @@ def expandNumbering(mesh, used):
 
     facesOut = []
     for f in mesh.faces:
-        facesOut.append(f._replace(vertices=[used[i] for i in f.vertices]))
+        facesOut.append([used[i] for i in f])
 
     return mesh._replace(vertices=vertsOut, faces=facesOut)
 
@@ -232,8 +231,8 @@ def processedByGroup(data, verbose=False):
         print("Splitting mesh by groups...")
 
     groupFaces = {}
-    for f in data.faces:
-        groupFaces.setdefault(f.group, []).append(f.vertices)
+    for i in range(len(data.faces)):
+        groupFaces.setdefault(data.faceGroups[i], []).append(data.faces[i])
 
     if verbose:
         print("Split mesh into %d groups." % len(groupFaces))
