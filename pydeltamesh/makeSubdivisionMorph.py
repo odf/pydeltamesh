@@ -1,6 +1,11 @@
-from re import sub
 import numpy as _np
-from numpy.lib.function_base import diff
+
+from collections import namedtuple as _namedtuple
+
+
+Face = _namedtuple("Face", [ "vertices", "group" ])
+
+Mesh = _namedtuple("Mesh", [ "vertices", "faces" ])
 
 
 def parseArguments():
@@ -79,20 +84,34 @@ def run(basepath, weldedpath, morphpath, name, verbose):
 
 
 def loadMesh(path, verbose=False):
-    from pydeltamesh.io import obj
-
     if verbose:
         print("Loading mesh from %s..." % path)
 
     with open(path) as fp:
-        data = obj.load(fp, path, skipNormals=True, skipUVs=True)
+        vertices = []
+        faces = []
+        group = None
+
+        for line in fp:
+            fields = line.split()
+
+            if len(fields) == 0:
+                pass
+            elif fields[0] == 'f':
+                ns = [ int(s[: s.find('/')]) for s in fields[1:] ]
+                vs = [ n - 1 if n > 0 else len(vertices) + n for n in ns]
+                faces.append(Face(vs, group))
+            elif fields[0] == 'g':
+                group = fields[1]
+            elif fields[0] == 'v':
+                vertices.append([float(s) for s in fields[1:]])
 
     if verbose:
         print("Loaded mesh with %d vertices and %d faces." % (
-            len(data.vertices), len(data.faces)
+            len(vertices), len(faces)
         ))
 
-    return data
+    return Mesh(_np.array(vertices), faces)
 
 
 def usedVertices(mesh):
