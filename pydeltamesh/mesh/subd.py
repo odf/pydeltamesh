@@ -150,16 +150,19 @@ def subdivideTopology(cx):
 
     for i, f in enumerate(cx.faces):
         kf = i + cx.nrVertices
-        ke = [k + cx.nrVertices + cx.nrFaces for k in cx.faceEdges(i)]
+        ke = cx.faceEdges(i)
+        t = cx.nrVertices + cx.nrFaces
 
         if len(f) == 4:
-            subdFaces.append([f[0], ke[0], kf, ke[3]])
-            subdFaces.append([ke[0], f[1], ke[1], kf])
-            subdFaces.append([kf, ke[1], f[2], ke[2]])
-            subdFaces.append([ke[3], kf, ke[2], f[3]])
+            subdFaces.extend([
+                [f[0], ke[0] + t, kf, ke[3] + t],
+                [ke[0] + t, f[1], ke[1] + t, kf],
+                [kf, ke[1] + t, f[2], ke[2] + t],
+                [ke[3] + t, kf, ke[2] + t, f[3]]
+            ])
         else:
             for j in range(len(f)):
-                subdFaces.append([f[j], ke[j], kf, ke[j - 1]])
+                subdFaces.append([f[j], ke[j] + t, kf, ke[j - 1] + t])
 
     return subdFaces
 
