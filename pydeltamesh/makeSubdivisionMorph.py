@@ -60,10 +60,15 @@ def run(basepath, weldedpath, morphpath, name, verbose):
 
     faces = welded.faces
     complexes = []
-    while len(faces) < len(morph.faces):
+
+    if len(faces) < len(morph.faces):
         cx = Complex(faces)
         complexes.append(cx)
-        faces = subdivideTopology(cx)
+
+        while 4 * len(cx.faces) < len(morph.faces):
+            faces = subdivideTopology(cx)
+            cx = Complex(faces)
+            complexes.append(cx)
 
     vertsMorphed = bakeDownMorph(
         welded.vertices, morph.vertices, complexes, verbose
