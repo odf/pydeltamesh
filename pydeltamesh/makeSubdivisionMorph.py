@@ -55,7 +55,8 @@ def run(basepath, weldedpath, morphpath, name, verbose):
     weldedRaw = loadMesh(weldedpath, verbose)
     morph = loadMesh(morphpath, verbose)
 
-    welded = expandNumbering(weldedRaw, usedVertices(morph))
+    used = usedVertices(morph)
+    welded = expandNumbering(weldedRaw, sorted(used))
 
     faces = welded.faces
     complexes = []
@@ -68,7 +69,7 @@ def run(basepath, weldedpath, morphpath, name, verbose):
         welded.vertices, morph.vertices, complexes, verbose
     )
     weldedMorphed = welded._replace(vertices=vertsMorphed)
-    targets = makeMorphTargets(name, base, weldedMorphed, verbose)
+    targets = makeBaseTargets(name, base, weldedMorphed, used, verbose)
 
     targets.append(makeSubdTarget(
         name, weldedMorphed, morph, complexes, verbose
@@ -118,7 +119,7 @@ def usedVertices(mesh):
     used = set()
     for f in mesh.faces:
         used.update(f)
-    return sorted(used)
+    return used
 
 
 def expandNumbering(mesh, used):
@@ -158,26 +159,39 @@ def bakeDownMorph(baseVerts, morphVerts, complexes, verbose=False):
     return baseVerts + morphVerts[: n] - verts[: n]
 
 
-def makeMorphTargets(name, baseMesh, morphedMesh, verbose=False):
+def makeBaseTargets(name, baseMesh, morphedMesh, used, verbose=False):
     from uuid import uuid4
-    from pydeltamesh.io.pmd import MorphTarget
+    from pydeltamesh.io.pmd import Deltas, MorphTarget
 
-    baseParts = processedByGroup(baseMesh, verbose)
-    morphParts = processedByGroup(morphedMesh, verbose)
+    vertsByGroup = {}
+    for i in range(len(baseMesh.faces)):
+        f = baseMesh.faces[i]
+        g = baseMesh.faceGroups[i]
+        vertsByGroup.setdefault(g, set()).update(f)
 
     targets = []
 
-    for actor in baseParts:
-        if actor in morphParts:
-            deltas = findDeltas(baseParts[actor], morphParts[actor])
+    for actor in vertsByGroup:
+        verts = sorted(vertsByGroup[actor])
+        idcs = []
+        vecs = []
 
-            if deltas:
-                if verbose:
-                    n = len(deltas.indices)
-                    print("Found %d deltas for %s." % (n, actor))
+        for v in verts:
+            if v in used:
+                d = morphedMesh.vertices[v] - baseMesh.vertices[v]
+                if norm(d) > 1e-5:
+                    idcs.append(v)
+                    vecs.append(d)
 
-                key = str(uuid4())
-                targets.append(MorphTarget(name, actor, key, deltas, {}))
+        if len(idcs):
+            if verbose:
+                print("Found %d deltas for %s." % (len(idcs), actor))
+
+            offset = verts[0]
+            num = len(verts)
+            deltas = Deltas(num, [i - offset for i in idcs], vecs)
+            key = str(uuid4())
+            targets.append(MorphTarget(name, actor, key, deltas, {}))
 
     return targets
 
@@ -222,61 +236,6 @@ def makeSubdTarget(name, baseSubd0, morph, complexes, verbose=False):
             verts[deltas.indices] += displacements
 
     return MorphTarget(name, actor, key, baseDeltas, subdDeltas)
-
-
-def processedByGroup(data, verbose=False):
-    import re
-    from pydeltamesh.mesh.match import topology
-
-    if verbose:
-        print("Splitting mesh by groups...")
-
-    groupFaces = {}
-    for i in range(len(data.faces)):
-        groupFaces.setdefault(data.faceGroups[i], []).append(data.faces[i])
-
-    if verbose:
-        print("Split mesh into %d groups." % len(groupFaces))
-
-    topologies = {}
-
-    if verbose:
-        print("Analysing actor topologies...")
-
-    for group in groupFaces:
-        actor = re.sub(':.*', '', group)
-
-        topo = topology(groupFaces[group], data.vertices)
-        topologies[actor] = topo
-
-    if verbose:
-        print("Analysed all actor topologies.")
-
-    return topologies
-
-
-def findDeltas(base, morph):
-    from pydeltamesh.io.pmd import Deltas
-    from pydeltamesh.mesh.match import match
-    from pydeltamesh.util.optimize import minimumWeightAssignment
-
-    mapping = match(base, morph, minimumWeightAssignment)
-
-    idcs = []
-    vecs = []
-    for u, v in sorted(mapping):
-        d = morph.vertexPosition(v) - base.vertexPosition(u)
-        if norm(d) > 1e-5:
-            idcs.append(u)
-            vecs.append(d)
-
-    if len(idcs):
-        offset = base.verticesUsed[0]
-        num = len(base.verticesUsed)
-
-        return Deltas(num, [i - offset for i in idcs], vecs)
-    else:
-        return None
 
 
 def findSubdDeltas(baseVertices, morphedVertices, normals):
