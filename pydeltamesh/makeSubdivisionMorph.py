@@ -168,6 +168,9 @@ def makeBaseTargets(name, baseMesh, morphedMesh, used, verbose=False):
     from uuid import uuid4
     from pydeltamesh.io.pmd import Deltas, MorphTarget
 
+    if verbose:
+        print("Finding deltas for level 0")
+
     vertsByGroup = {}
     for i in range(len(baseMesh.faces)):
         f = baseMesh.faces[i]
@@ -175,6 +178,7 @@ def makeBaseTargets(name, baseMesh, morphedMesh, used, verbose=False):
         vertsByGroup.setdefault(g, set()).update(f)
 
     targets = []
+    nrDeltas = 0
 
     for actor in vertsByGroup:
         verts = sorted(vertsByGroup[actor])
@@ -189,14 +193,17 @@ def makeBaseTargets(name, baseMesh, morphedMesh, used, verbose=False):
                     vecs.append(d)
 
         if len(idcs):
-            if verbose:
-                print("Found %d deltas for %s." % (len(idcs), actor))
-
+            nrDeltas += len(idcs)
             offset = verts[0]
             num = len(verts)
             deltas = Deltas(num, [i - offset for i in idcs], vecs)
             key = str(uuid4())
             targets.append(MorphTarget(name, actor, key, deltas, {}))
+
+    if verbose:
+        print("Found a total of %d deltas for %d actors." % (
+            nrDeltas, len(targets)
+        ))
 
     return targets
 
@@ -223,14 +230,17 @@ def makeSubdTarget(name, baseSubd0, morph, complexes, verbose=False):
         verts = interpolatePerVertexData(verts, complexes[level - 1])
         faces = subdivideTopology(complexes[level - 1])
 
-        if verbose:
-            print("Finding deltas for level %d..." % level)
-
         morphedVerts = bakeDownMorph(
             verts, morph.vertices, complexes[level:], verbose
         )
 
+        if verbose:
+            print("Computing vertex normals...")
         normals = vertexNormals(verts, faces)
+
+        if verbose:
+            print("Finding deltas for level %d..." % level)
+
         deltas, displacements = findSubdDeltas(verts, morphedVerts, normals)
         subdDeltas[level] = deltas
 
