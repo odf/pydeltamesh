@@ -7,6 +7,11 @@ class Complex(object):
 
         neighbors = [[] for _ in range(nv)]
         facesAtVert = [[] for _ in range(nv)]
+        edgesAtFace = [[] for _ in range(len(faces))]
+        edgeIndex = {}
+        vertsAtEdge = []
+        facesAtEdge = []
+
         for i, f in enumerate(faces):
             for v, w in _cyclicPairs(f):
                 if w not in neighbors[v]:
@@ -16,21 +21,11 @@ class Complex(object):
                 if i not in facesAtVert[v]:
                     facesAtVert[v].append(i)
 
-        edgeIndex = {}
-        vertsAtEdge = []
-        for f in faces:
-            for v, w in _cyclicPairs(f):
                 if edgeIndex.get((v, w)) is None:
                     edgeIndex[v, w] = edgeIndex[w, v] = len(vertsAtEdge)
                     vertsAtEdge.append([v, w])
+                    facesAtEdge.append([])
 
-        edgesAtFace = []
-        facesAtEdge = [[] for _ in range(len(vertsAtEdge))]
-
-        for i, f in enumerate(faces):
-            edgesAtFace.append([])
-
-            for v, w in _cyclicPairs(f):
                 k = edgeIndex[v, w]
                 edgesAtFace[i].append(k)
                 if i not in facesAtEdge[k]:
