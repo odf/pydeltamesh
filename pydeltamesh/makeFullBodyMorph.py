@@ -33,7 +33,7 @@ def parseArguments():
 def run(basepath, morphpath, morphname, verbose):
     from uuid import uuid4
 
-    from pydeltamesh.io.pmd import MorphTarget, write_pmd
+    from pydeltamesh.fileio.pmd import MorphTarget, write_pmd
 
     name = morphname
 
@@ -65,7 +65,7 @@ def run(basepath, morphpath, morphname, verbose):
 
 
 def loadMesh(path, verbose=False):
-    from pydeltamesh.io import obj
+    from pydeltamesh.fileio import obj
 
     if verbose:
         print("Loading mesh from %s..." % path)
@@ -114,7 +114,7 @@ def processedByGroup(data, verbose=False):
 
 
 def findDeltas(base, morph):
-    from pydeltamesh.io.pmd import Deltas
+    from pydeltamesh.fileio.pmd import Deltas
     from pydeltamesh.mesh.match import match
     from pydeltamesh.util.optimize import minimumWeightAssignment
 
@@ -140,7 +140,7 @@ def findDeltas(base, morph):
 def writeInjectionPoseFile(fp, name, targets):
     from uuid import uuid4
 
-    from pydeltamesh.io.poserFile import PoserFile
+    from pydeltamesh.fileio.poserFile import PoserFile
 
     morphPath = ':Runtime:libraries:Pose:%s.pmd' % name
 

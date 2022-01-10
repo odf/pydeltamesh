@@ -99,7 +99,7 @@ class Complex(object):
 
 
 def subdivideMesh(mesh):
-    from pydeltamesh.io.obj import Face, Mesh
+    from pydeltamesh.fileio.obj import Face, Mesh
 
     skipUVs = len(mesh.texverts) == 0
 
@@ -261,11 +261,11 @@ def _cyclicPairs(items):
 
 if __name__ == "__main__":
     import sys
-    from os.path import dirname
+    from os.path import abspath, dirname
 
-    sys.path.append(dirname(dirname(dirname(__file__))))
+    sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
 
-    from pydeltamesh.io import obj
+    from pydeltamesh.fileio import obj
 
     with open(sys.argv[1]) as fp:
         mesh = obj.load(fp)

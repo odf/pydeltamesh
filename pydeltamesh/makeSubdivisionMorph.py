@@ -45,7 +45,7 @@ def parseArguments():
 
 def run(basepath, weldedpath, morphpath, name, verbose):
     import os.path
-    from pydeltamesh.io.pmd import write_pmd
+    from pydeltamesh.fileio.pmd import write_pmd
     from pydeltamesh.mesh.subd import Complex, subdivideTopology
 
     if name is None:
@@ -166,7 +166,7 @@ def bakeDownMorph(baseVerts, morphVerts, complexes, verbose=False):
 
 def makeBaseTargets(name, baseMesh, morphedMesh, used, verbose=False):
     from uuid import uuid4
-    from pydeltamesh.io.pmd import Deltas, MorphTarget
+    from pydeltamesh.fileio.pmd import Deltas, MorphTarget
 
     if verbose:
         print("Finding deltas for level 0")
@@ -213,7 +213,7 @@ def makeSubdTarget(name, baseSubd0, morph, complexes, verbose=False):
     from pydeltamesh.mesh.subd import (
         interpolatePerVertexData, subdivideTopology
     )
-    from pydeltamesh.io.pmd import Deltas, MorphTarget
+    from pydeltamesh.fileio.pmd import Deltas, MorphTarget
 
     actor = "BODY"
     key = str(uuid4())
@@ -254,7 +254,7 @@ def makeSubdTarget(name, baseSubd0, morph, complexes, verbose=False):
 
 
 def findSubdDeltas(baseVertices, morphedVertices, normals):
-    from pydeltamesh.io.pmd import Deltas
+    from pydeltamesh.fileio.pmd import Deltas
 
     diffs = morphedVertices[: len(baseVertices)] - baseVertices
     dists = _np.sqrt(_np.sum(diffs * diffs, axis=1))
@@ -289,7 +289,7 @@ def norm(v):
 
 
 def writeInjectionPoseFile(fp, name, targets):
-    from pydeltamesh.io.poserFile import PoserFile
+    from pydeltamesh.fileio.poserFile import PoserFile
 
     morphPath = ':Runtime:libraries:Pose:%s.pmd' % name
 
@@ -384,9 +384,9 @@ actor BODY:1
 
 if __name__ == '__main__':
     import sys
-    from os.path import dirname
+    from os.path import abspath, dirname
 
-    sys.path.append(dirname(dirname(__file__)))
+    sys.path.append(dirname(dirname(abspath(__file__))))
 
     args = parseArguments()
 
