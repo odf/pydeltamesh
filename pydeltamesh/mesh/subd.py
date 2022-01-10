@@ -5,6 +5,7 @@ class Complex(object):
     def __init__(self, faces):
         nv = 1 + max(max(f) for f in faces)
 
+        isAllQuads = True
         neighbors = [[] for _ in range(nv)]
         facesAtVert = [[] for _ in range(nv)]
         edgesAtFace = [[] for _ in range(len(faces))]
@@ -13,6 +14,9 @@ class Complex(object):
         facesAtEdge = []
 
         for i, f in enumerate(faces):
+            if len(f) != 4:
+                isAllQuads = False
+
             for v, w in _cyclicPairs(f):
                 if w not in neighbors[v]:
                     neighbors[v].append(w)
@@ -42,6 +46,7 @@ class Complex(object):
                     boundaryNeighbors[v].append(u)
 
         self._faces = faces
+        self._isAllQuads = isAllQuads
 
         self._nrVertices = nv
         self._nrFaces = len(faces)
@@ -69,6 +74,10 @@ class Complex(object):
     @property
     def faces(self):
         return self._faces
+
+    @property
+    def isAllQuads(self):
+        return self._isAllQuads
 
     def vertexNeighbors(self, v):
         return self._vertexNeighbors[v]
@@ -176,18 +185,24 @@ def adjustVertexData(vertexData, cx):
 
 
 def _faceCenters(vertices, cx):
-    centers = _np.zeros((len(cx.faces), vertices.shape[1]))
+    if cx.isAllQuads:
+        vs = vertices
+        fs = _np.array(cx.faces)
 
-    facesByDegree = {}
-    for i in range(len(cx.faces)):
-        facesByDegree.setdefault(len(cx.faces[i]), []).append(i)
+        return (vs[fs[:, 0]] + vs[fs[:, 1]] + vs[fs[:, 2]] + vs[fs[:, 3]]) / 4
+    else:
+        centers = _np.zeros((len(cx.faces), vertices.shape[1]))
 
-    for d in facesByDegree:
-        idcs = facesByDegree[d]
-        vs = [cx.faces[i] for i in idcs]
-        centers[idcs] = _np.sum(vertices[vs], axis=1) / d
+        facesByDegree = {}
+        for i in range(len(cx.faces)):
+            facesByDegree.setdefault(len(cx.faces[i]), []).append(i)
 
-    return centers
+        for d in facesByDegree:
+            idcs = facesByDegree[d]
+            vs = [cx.faces[i] for i in idcs]
+            centers[idcs] = _np.sum(vertices[vs], axis=1) / d
+
+        return centers
 
 
 def _edgePoints(vertexData, fPoints, cx):
