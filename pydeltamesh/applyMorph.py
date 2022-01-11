@@ -1,7 +1,7 @@
 def run():
     import os.path
 
-    from pydeltamesh.io import obj
+    from pydeltamesh.fileio import obj
     from pydeltamesh.mesh.match import match
     from pydeltamesh.util.optimize import minimumWeightAssignment
 
@@ -79,7 +79,7 @@ def parseArguments():
 
 
 def loadAndProcessMesh(path):
-    from pydeltamesh.io import obj
+    from pydeltamesh.fileio import obj
     from pydeltamesh.mesh.match import topology
 
     with open(path) as fp:
@@ -116,8 +116,8 @@ def display(*meshes):
 
 if __name__ == '__main__':
     import sys
-    from os.path import dirname
+    from os.path import abspath, dirname
 
-    sys.path.append(dirname(dirname(__file__)))
+    sys.path.append(dirname(dirname(abspath(__file__))))
 
     run()

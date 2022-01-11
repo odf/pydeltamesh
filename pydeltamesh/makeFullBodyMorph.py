@@ -241,9 +241,9 @@ def norm(v):
 
 if __name__ == '__main__':
     import sys
-    from os.path import dirname
+    from os.path import abspath, dirname
 
-    sys.path.append(dirname(dirname(__file__)))
+    sys.path.append(dirname(dirname(abspath(__file__))))
 
     args = parseArguments()
 
