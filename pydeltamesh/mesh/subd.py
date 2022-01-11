@@ -199,18 +199,18 @@ def _faceCenters(vertices, cx):
 
         for d in facesByDegree:
             idcs = facesByDegree[d]
-            vs = [cx.faces[i] for i in idcs]
+            vs = _np.array([cx.faces[i] for i in idcs])
             centers[idcs] = _np.sum(vertices[vs], axis=1) / d
 
         return centers
 
 
 def _edgePoints(vertexData, fPoints, cx):
-    vs = [cx.edgeVertices(i) for i in range(cx.nrEdges)]
+    vs = _np.array([cx.edgeVertices(i) for i in range(cx.nrEdges)])
     output = _np.sum(vertexData[vs], axis=1) / 2.0
 
     interior = [i for i in range(cx.nrEdges) if len(cx.edgeFaces(i)) == 2]
-    ws = [cx.edgeFaces(i) for i in interior]
+    ws = _np.array([cx.edgeFaces(i) for i in interior])
     output[interior] += _np.sum(fPoints[ws], axis=1) / 2.0
     output[interior] /= 2.0
 
@@ -234,10 +234,11 @@ def _adjustedVertices(vertexData, fPoints, cx):
         else:
             boundary.append(v)
 
-    ps = vertexData[[cx.boundaryNeighbors(v) for v in boundary]]
-    output[boundary] = (
-        0.75 * vertexData[boundary] + 0.125 * _np.sum(ps, axis=1)
-    )
+    if len(boundary) > 0:
+        ps = vertexData[_np.array([cx.boundaryNeighbors(v) for v in boundary])]
+        output[boundary] = (
+            0.75 * vertexData[boundary] + 0.125 * _np.sum(ps, axis=1)
+        )
 
     for d in interiorByDegree:
         idcs = interiorByDegree[d]
@@ -250,7 +251,7 @@ def _adjustedVertices(vertexData, fPoints, cx):
         ws = _np.array([cx.vertexFaces(v) for v in idcs])
         f = _np.sum(fPoints[ws], axis=1) / (d**2)
 
-        output[idcs] = f + r + (d - 2) / d * p
+        output[idcs] = f + r + (d - 2.0) / d * p
 
     return output
 
