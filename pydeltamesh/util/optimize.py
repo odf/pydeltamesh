@@ -123,7 +123,7 @@ def minimumWeightAssignment(weightMatrix):
 
     if nrows < n or ncols < n:
         T = M
-        M = np.zeros_like(M, shape=(n, n))
+        M = np.zeros((n, n), dtype=M.dtype)
         M[:nrows, :ncols] = T
 
     for i in range(n):
