@@ -46,7 +46,6 @@ def parseArguments():
 def run(basepath, weldedpath, morphpath, name, verbose):
     import os.path
     from pydeltamesh.fileio.pmd import write_pmd
-    from pydeltamesh.mesh.subd import Complex, subdivideTopology
 
     if name is None:
         name = os.path.splitext(os.path.split(morphpath)[1])[0]
@@ -57,6 +56,18 @@ def run(basepath, weldedpath, morphpath, name, verbose):
 
     used = usedVertices(morph)
     welded = expandNumbering(weldedRaw, sorted(used))
+
+    targets = makeTargets(name, verbose, base, morph, used, welded)
+
+    with open("%s.pmd" % name, "wb") as fp:
+        write_pmd(fp, targets)
+
+    with open("%s.pz2" % name, "w") as fp:
+        writeInjectionPoseFile(fp, name, targets)
+
+
+def makeTargets(name, verbose, base, morph, used, welded):
+    from pydeltamesh.mesh.subd import Complex, subdivideTopology
 
     faces = welded.faces
     complexes = []
@@ -80,11 +91,7 @@ def run(basepath, weldedpath, morphpath, name, verbose):
         name, weldedMorphed, morph, complexes, verbose
     ))
 
-    with open("%s.pmd" % name, "wb") as fp:
-        write_pmd(fp, targets)
-
-    with open("%s.pz2" % name, "w") as fp:
-        writeInjectionPoseFile(fp, name, targets)
+    return targets
 
 
 def loadMesh(path, verbose=False):
