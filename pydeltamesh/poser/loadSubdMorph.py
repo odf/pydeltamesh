@@ -15,16 +15,7 @@ def loadSubdMorph(name=None):
     scene = poser.Scene()
     figure = scene.CurrentFigure()
 
-    subdLevelPreview = figure.NumbSubdivLevels()
-    subdLevelRender = figure.NumbSubdivRenderLevels()
-
-    figure.SetNumbSubdivLevels(0)
-    figure.SetNumbSubdivRenderLevels(0)
-
-    geom = figure.SubdivGeometry()
-
-    figure.SetNumbSubdivLevels(subdLevelPreview)
-    figure.SetNumbSubdivRenderLevels(subdLevelRender)
+    geom, actors, actorVertexIdcs = figure.UnimeshInfo()
 
     verts = geom.Vertices()
     polys = geom.Polygons()
