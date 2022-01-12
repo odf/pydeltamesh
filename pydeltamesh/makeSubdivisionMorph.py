@@ -43,21 +43,21 @@ def parseArguments():
     return parser.parse_args()
 
 
-def run(basepath, weldedpath, morphpath, name, verbose):
+def run(unweldedBasePath, weldedBasePath, morphPath, name, verbose):
     import os.path
     from pydeltamesh.fileio.pmd import write_pmd
 
     if name is None:
-        name = os.path.splitext(os.path.split(morphpath)[1])[0]
+        name = os.path.splitext(os.path.split(morphPath)[1])[0]
 
-    base = loadMesh(basepath, verbose)
-    weldedRaw = loadMesh(weldedpath, verbose)
-    morph = loadMesh(morphpath, verbose)
+    unwelded = loadMesh(unweldedBasePath, verbose)
+    weldedRaw = loadMesh(weldedBasePath, verbose)
+    morph = loadMesh(morphPath, verbose)
 
     used = usedVertices(morph)
     welded = expandNumbering(weldedRaw, sorted(used))
 
-    targets = makeTargets(name, verbose, base, morph, used, welded)
+    targets = makeTargets(name, unwelded, welded, morph, used, verbose)
 
     with open("%s.pmd" % name, "wb") as fp:
         write_pmd(fp, targets)
@@ -66,7 +66,7 @@ def run(basepath, weldedpath, morphpath, name, verbose):
         writeInjectionPoseFile(fp, name, targets)
 
 
-def makeTargets(name, verbose, base, morph, used, welded):
+def makeTargets(name, unwelded, welded, morph, used, verbose):
     from pydeltamesh.mesh.subd import Complex, subdivideTopology
 
     faces = welded.faces
@@ -85,7 +85,7 @@ def makeTargets(name, verbose, base, morph, used, welded):
         welded.vertices, morph.vertices, complexes, verbose
     )
     weldedMorphed = welded._replace(vertices=vertsMorphed)
-    targets = makeBaseTargets(name, base, weldedMorphed, used, verbose)
+    targets = makeBaseTargets(name, unwelded, weldedMorphed, used, verbose)
 
     targets.append(makeSubdTarget(
         name, weldedMorphed, morph, complexes, verbose
