@@ -2,7 +2,25 @@ def loadSubdMorph(name=None):
     import os.path
     import numpy as np
     import poser
-    from pydeltamesh.makeSubdivisionMorph import Mesh, loadMesh
+    from pydeltamesh.makeSubdivisionMorph import (
+        Mesh, loadMesh, makeTargets, usedVertices
+    )
+
+    def saveObj(path, mesh):
+        lines = []
+
+        for v in mesh.vertices:
+            lines.append("v %.8f %.8f %.8f\n" % tuple(v))
+
+        for f in mesh.faces:
+            lines.append("f")
+            for i in range(len(f)):
+                lines.append(" %s//" % (f[i] + 1))
+            lines.append("\n")
+
+        with open(path, "w") as fp:
+            fp.write("".join(lines))
+
 
     chooser = poser.DialogFileChooser(poser.kDialogFileChooserOpen)
     chooser.Show()
@@ -11,6 +29,8 @@ def loadSubdMorph(name=None):
 
     if name is None:
         name = os.path.splitext(os.path.split(path)[1])[0]
+
+    dir = os.path.dirname(path)
 
     scene = poser.Scene()
     figure = scene.CurrentFigure()
@@ -27,9 +47,36 @@ def loadSubdMorph(name=None):
         faceGroups=[p.Groups()[0] for p in polys]
     )
 
-    print("Figure mesh has %d vertices and %d faces" % (
-        len(welded.vertices), len(welded.faces)
-    ))
+    used = usedVertices(welded)
+
+    saveObj(os.path.join(dir, "x-welded.obj"), welded)
+
+    vertices = np.zeros_like(welded.vertices)
+    faces = []
+    faceGroups = []
+
+    for i, actor in enumerate(actors):
+        geom = actor.Geometry()
+        verts = geom.Vertices()
+        polys = geom.Polygons()
+        sets = geom.Sets()
+        idcs = actorVertexIdcs[i]
+
+        for k in range(len(verts)):
+            v = verts[k]
+            vertices[idcs[k]] = [v.X(), v.Y(), v.Z()]
+
+        for p in polys:
+            f = sets[p.Start(): p.Start() + p.NumVertices()]
+            faces.append([idcs[k] for k in f])
+
+        faceGroups.extend([p.Groups()[0] for p in polys])
+
+    unwelded = Mesh(np.array(vertices), faces, faceGroups)
+
+    saveObj(os.path.join(dir, "x-unwelded.obj"), unwelded)
+
+    targets = makeTargets(name, unwelded, welded, morph, used, True)
 
 
 
