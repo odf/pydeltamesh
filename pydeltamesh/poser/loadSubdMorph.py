@@ -2,17 +2,23 @@ def loadSubdMorph(name=None):
     import os.path
     import numpy as np
     import poser
+    from pydeltamesh.fileio.pmd import write_pmd
     from pydeltamesh.makeSubdivisionMorph import (
-        Mesh, loadMesh, makeTargets, usedVertices
+        Mesh, loadMesh, makeTargets, usedVertices, writeInjectionPoseFile
     )
 
     def saveObj(path, mesh):
+        group = None
         lines = []
 
         for v in mesh.vertices:
             lines.append("v %.8f %.8f %.8f\n" % tuple(v))
 
-        for f in mesh.faces:
+        for i, f in enumerate(mesh.faces):
+            if mesh.faceGroups[i] != group:
+                group = mesh.faceGroups[i]
+                lines.append("g %s\n" % group)
+
             lines.append("f")
             for i in range(len(f)):
                 lines.append(" %s//" % (f[i] + 1))
@@ -51,33 +57,36 @@ def loadSubdMorph(name=None):
 
     saveObj(os.path.join(dir, "x-welded.obj"), welded)
 
-    vertices = np.zeros_like(welded.vertices)
+    vertices = []
     faces = []
     faceGroups = []
 
-    for i, actor in enumerate(actors):
+    for actor in actors:
         geom = actor.Geometry()
         verts = geom.Vertices()
         polys = geom.Polygons()
         sets = geom.Sets()
-        idcs = actorVertexIdcs[i]
 
-        for k in range(len(verts)):
-            v = verts[k]
-            vertices[idcs[k]] = [v.X(), v.Y(), v.Z()]
+        offset = len(vertices)
 
-        for p in polys:
-            f = sets[p.Start(): p.Start() + p.NumVertices()]
-            faces.append([idcs[k] for k in f])
-
+        vertices.extend([[v.X(), v.Y(), v.Z()] for v in verts])
+        faces.extend([
+            [sets[p.Start() + k] + offset for k in range(p.NumVertices())]
+            for p in polys
+        ])
         faceGroups.extend([p.Groups()[0] for p in polys])
 
     unwelded = Mesh(np.array(vertices), faces, faceGroups)
 
     saveObj(os.path.join(dir, "x-unwelded.obj"), unwelded)
 
-    targets = makeTargets(name, unwelded, welded, morph, used, True)
+    targets = makeTargets(name, unwelded, welded, morph, used, verbose=True)
 
+    with open(os.path.join(dir, "%s.pmd" % name), "wb") as fp:
+        write_pmd(fp, targets)
+
+    with open(os.path.join(dir, "%s.pz2" % name), "w") as fp:
+        writeInjectionPoseFile(fp, name, targets)
 
 
 if __name__ == '__main__':
