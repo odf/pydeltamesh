@@ -57,7 +57,7 @@ def run(unweldedBasePath, weldedBasePath, morphPath, name, verbose):
     used = usedVertices(morph)
     welded = expandNumbering(weldedRaw, sorted(used))
 
-    targets = makeTargets(name, unwelded, welded, morph, used, verbose)
+    targets = makeTargets(name, unwelded, welded, morph, used, verbose=True)
 
     with open("%s.pmd" % name, "wb") as fp:
         write_pmd(fp, targets)
@@ -66,7 +66,9 @@ def run(unweldedBasePath, weldedBasePath, morphPath, name, verbose):
         writeInjectionPoseFile(fp, name, targets)
 
 
-def makeTargets(name, unwelded, welded, morph, used, verbose):
+def makeTargets(
+    name, unwelded, welded, morph, used, skipSubd=False, verbose=False
+):
     from pydeltamesh.mesh.subd import Complex, subdivideTopology
 
     faces = welded.faces
@@ -87,9 +89,10 @@ def makeTargets(name, unwelded, welded, morph, used, verbose):
     weldedMorphed = welded._replace(vertices=vertsMorphed)
     targets = makeBaseTargets(name, unwelded, weldedMorphed, used, verbose)
 
-    targets.append(makeSubdTarget(
-        name, weldedMorphed, morph, complexes, verbose
-    ))
+    if not skipSubd:
+        targets.append(makeSubdTarget(
+            name, weldedMorphed, morph, complexes, verbose
+        ))
 
     return targets
 
