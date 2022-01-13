@@ -41,7 +41,7 @@ def loadSubdMorph(name=None):
     scene = poser.Scene()
     figure = scene.CurrentFigure()
 
-    geom, actors, actorVertexIdcs = figure.UnimeshInfo()
+    geom = figure.SubdivGeometry()
 
     verts = geom.Vertices()
     polys = geom.Polygons()
@@ -56,6 +56,8 @@ def loadSubdMorph(name=None):
     used = usedVertices(welded)
 
     saveObj(os.path.join(dir, "x-welded.obj"), welded)
+
+    geom, actors, actorVertexIdcs = figure.UnimeshInfo()
 
     vertices = []
     faces = []
