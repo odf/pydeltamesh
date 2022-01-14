@@ -298,15 +298,16 @@ def norm(v):
     return sum(x * x for x in v)**0.5
 
 
-def writeInjectionPoseFile(fp, name, targets):
+def writeInjectionPoseFile(fp, name, targets, pmdPath=None):
     from pydeltamesh.fileio.poserFile import PoserFile
 
-    morphPath = ':Runtime:libraries:Pose:%s.pmd' % name
+    if pmdPath is None:
+        pmdPath = ':Runtime:libraries:Pose:%s.pmd' % name
 
     source = PoserFile(fileTemplate.splitlines())
     root = source.root
 
-    next(root.select('injectPMDFileMorphs')).rest = morphPath
+    next(root.select('injectPMDFileMorphs')).rest = pmdPath
     next(root.select('createFullBodyMorph')).rest = name
 
     for target in targets:
