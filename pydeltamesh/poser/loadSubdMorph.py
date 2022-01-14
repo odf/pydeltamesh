@@ -1,10 +1,10 @@
 def loadSubdMorph(name=None):
     import os.path
-    import numpy as np
     import poser
     from pydeltamesh.fileio.pmd import write_pmd
+    from pydeltamesh.poser import poserUtils
     from pydeltamesh.makeSubdivisionMorph import (
-        Mesh, loadMesh, makeTargets, usedVertices, writeInjectionPoseFile
+        loadMesh, makeTargets, usedVertices, writeInjectionPoseFile
     )
 
     chooser = poser.DialogFileChooser(poser.kDialogFileChooserOpen)
@@ -20,51 +20,9 @@ def loadSubdMorph(name=None):
     scene = poser.Scene()
     figure = scene.CurrentFigure()
 
-    nrSubdivPreview = figure.NumbSubdivLevels()
-    nrSubdivRender = figure.NumbSubdivRenderLevels()
-
-    figure.SetNumbSubdivLevels(0)
-    figure.SetNumbSubdivRenderLevels(0)
-
-    geom = figure.SubdivGeometry()
-
-    figure.SetNumbSubdivLevels(nrSubdivPreview)
-    figure.SetNumbSubdivRenderLevels(nrSubdivRender)
-
-    verts = geom.Vertices()
-    polys = geom.Polygons()
-    sets = geom.Sets()
-
-    welded = Mesh(
-        vertices=np.array([[v.X(), v.Y(), v.Z()] for v in verts]),
-        faces=[sets[p.Start(): p.Start() + p.NumVertices()] for p in polys],
-        faceGroups=[p.Groups()[0] for p in polys]
-    )
-
+    unwelded = poserUtils.getUnweldedBaseMesh(figure)
+    welded = poserUtils.getWeldedBaseMesh(figure)
     used = usedVertices(welded)
-
-    geom, actors, actorVertexIdcs = figure.UnimeshInfo()
-
-    vertices = []
-    faces = []
-    faceGroups = []
-
-    for actor in actors:
-        geom = actor.Geometry()
-        verts = geom.Vertices()
-        polys = geom.Polygons()
-        sets = geom.Sets()
-
-        offset = len(vertices)
-
-        vertices.extend([[v.X(), v.Y(), v.Z()] for v in verts])
-        faces.extend([
-            [sets[p.Start() + k] + offset for k in range(p.NumVertices())]
-            for p in polys
-        ])
-        faceGroups.extend([p.Groups()[0] for p in polys])
-
-    unwelded = Mesh(np.array(vertices), faces, faceGroups)
 
     targets = makeTargets(name, unwelded, welded, morph, used, verbose=True)
 
