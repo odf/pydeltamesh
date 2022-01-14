@@ -32,13 +32,18 @@ def loadSubdMorph(name=None):
 
     targets = makeTargets(name, unwelded, welded, morph, used, verbose=True)
 
-    with open(os.path.join(dir, "%s.pmd" % name), "wb") as fp:
+    pmdPath = os.path.join(dir, "%s.pmd" % name)
+    pz2Path = os.path.join(dir, "%s.pz2" % name)
+
+    with open(pmdPath, "wb") as fp:
         write_pmd(fp, targets)
 
-    with open(os.path.join(dir, "%s.pz2" % name), "w") as fp:
-        writeInjectionPoseFile(fp, name, targets)
+    with open(pz2Path, "w") as fp:
+        writeInjectionPoseFile(fp, name, targets, pmdPath=pmdPath)
 
-    print("Morph loaded in %s seconds." % (time.process_time() - t0))
+    print("Morph created in %s seconds." % (time.process_time() - t0))
+
+    scene.LoadLibraryPose(pz2Path)
 
 
 if __name__ == '__main__':
