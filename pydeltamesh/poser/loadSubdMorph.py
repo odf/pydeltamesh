@@ -1,7 +1,6 @@
-def loadSubdMorph(name=None):
+def loadSubdMorph(name, path):
     import time
     import os
-    import os.path
 
     import poser
 
@@ -11,15 +10,11 @@ def loadSubdMorph(name=None):
         loadMesh, makeTargets, usedVertices, writeInjectionPoseFile
     )
 
-    chooser = poser.DialogFileChooser(poser.kDialogFileChooserOpen)
-    chooser.Show()
-    path = chooser.Path()
-
     t0 = time.process_time()
 
     morph = loadMesh(path, verbose=True)
 
-    if name is None:
+    if not name:
         name = os.path.splitext(os.path.split(path)[1])[0]
 
     scene = poser.Scene()
@@ -41,20 +36,31 @@ def loadSubdMorph(name=None):
     with open(pz2Path, "w") as fp:
         writeInjectionPoseFile(fp, name, targets, pmdPath=pmdPath)
 
-    print("Morph created in %s seconds." % (time.process_time() - t0))
-
     scene.LoadLibraryPose(pz2Path)
     os.remove(pmdPath)
     os.remove(pz2Path)
+
+    print("Morph loaded in %s seconds." % (time.process_time() - t0))
 
 
 if __name__ == '__main__':
     import sys
     from os.path import abspath, dirname
+    import poser
 
     libdir = dirname(dirname(dirname(abspath(__file__))))
 
     if not libdir in sys.path:
         sys.path.append(libdir)
 
-    loadSubdMorph()
+    textEntry = poser.DialogTextEntry(message="Morph Name")
+    success = textEntry.Show()
+    name = textEntry.Text() if success else None
+
+    chooser = poser.DialogFileChooser(
+        poser.kDialogFileChooserOpen,
+        message="Select an *.obj file"
+    )
+    if chooser.Show():
+        path = chooser.Path()
+        loadSubdMorph(name, path)
