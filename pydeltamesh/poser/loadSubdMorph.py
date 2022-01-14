@@ -1,5 +1,6 @@
 def loadSubdMorph(name=None):
     import time
+    import os
     import os.path
 
     import poser
@@ -21,8 +22,6 @@ def loadSubdMorph(name=None):
     if name is None:
         name = os.path.splitext(os.path.split(path)[1])[0]
 
-    dir = os.path.dirname(path)
-
     scene = poser.Scene()
     figure = scene.CurrentFigure()
 
@@ -32,8 +31,9 @@ def loadSubdMorph(name=None):
 
     targets = makeTargets(name, unwelded, welded, morph, used, verbose=True)
 
-    pmdPath = os.path.join(dir, "%s.pmd" % name)
-    pz2Path = os.path.join(dir, "%s.pz2" % name)
+    tempdir = poser.TempLocation()
+    pmdPath = os.path.join(tempdir, "%s.pmd" % name)
+    pz2Path = os.path.join(tempdir, "%s.pz2" % name)
 
     with open(pmdPath, "wb") as fp:
         write_pmd(fp, targets)
@@ -44,6 +44,8 @@ def loadSubdMorph(name=None):
     print("Morph created in %s seconds." % (time.process_time() - t0))
 
     scene.LoadLibraryPose(pz2Path)
+    os.remove(pmdPath)
+    os.remove(pz2Path)
 
 
 if __name__ == '__main__':
