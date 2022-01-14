@@ -54,3 +54,5 @@ if __name__ == '__main__':
 
     if not libdir in sys.path:
         sys.path.append(libdir)
+
+    loadSubdMorph()
