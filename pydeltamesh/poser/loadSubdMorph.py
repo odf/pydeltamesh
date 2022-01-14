@@ -7,27 +7,6 @@ def loadSubdMorph(name=None):
         Mesh, loadMesh, makeTargets, usedVertices, writeInjectionPoseFile
     )
 
-    def saveObj(path, mesh):
-        group = None
-        lines = []
-
-        for v in mesh.vertices:
-            lines.append("v %.8f %.8f %.8f\n" % tuple(v))
-
-        for i, f in enumerate(mesh.faces):
-            if mesh.faceGroups[i] != group:
-                group = mesh.faceGroups[i]
-                lines.append("g %s\n" % group)
-
-            lines.append("f")
-            for i in range(len(f)):
-                lines.append(" %s//" % (f[i] + 1))
-            lines.append("\n")
-
-        with open(path, "w") as fp:
-            fp.write("".join(lines))
-
-
     chooser = poser.DialogFileChooser(poser.kDialogFileChooserOpen)
     chooser.Show()
     path = chooser.Path()
@@ -55,8 +34,6 @@ def loadSubdMorph(name=None):
 
     used = usedVertices(welded)
 
-    saveObj(os.path.join(dir, "x-welded.obj"), welded)
-
     geom, actors, actorVertexIdcs = figure.UnimeshInfo()
 
     vertices = []
@@ -79,8 +56,6 @@ def loadSubdMorph(name=None):
         faceGroups.extend([p.Groups()[0] for p in polys])
 
     unwelded = Mesh(np.array(vertices), faces, faceGroups)
-
-    saveObj(os.path.join(dir, "x-unwelded.obj"), unwelded)
 
     targets = makeTargets(name, unwelded, welded, morph, used, verbose=True)
 
