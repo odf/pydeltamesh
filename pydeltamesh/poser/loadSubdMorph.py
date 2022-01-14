@@ -20,7 +20,16 @@ def loadSubdMorph(name=None):
     scene = poser.Scene()
     figure = scene.CurrentFigure()
 
+    nrSubdivPreview = figure.NumbSubdivLevels()
+    nrSubdivRender = figure.NumbSubdivRenderLevels()
+
+    figure.SetNumbSubdivLevels(0)
+    figure.SetNumbSubdivRenderLevels(0)
+
     geom = figure.SubdivGeometry()
+
+    figure.SetNumbSubdivLevels(nrSubdivPreview)
+    figure.SetNumbSubdivRenderLevels(nrSubdivRender)
 
     verts = geom.Vertices()
     polys = geom.Polygons()
