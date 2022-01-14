@@ -1,6 +1,9 @@
 def loadSubdMorph(name=None):
+    import time
     import os.path
+
     import poser
+
     from pydeltamesh.fileio.pmd import write_pmd
     from pydeltamesh.poser import poserUtils
     from pydeltamesh.makeSubdivisionMorph import (
@@ -10,6 +13,9 @@ def loadSubdMorph(name=None):
     chooser = poser.DialogFileChooser(poser.kDialogFileChooserOpen)
     chooser.Show()
     path = chooser.Path()
+
+    t0 = time.process_time()
+
     morph = loadMesh(path, verbose=True)
 
     if name is None:
@@ -31,6 +37,8 @@ def loadSubdMorph(name=None):
 
     with open(os.path.join(dir, "%s.pz2" % name), "w") as fp:
         writeInjectionPoseFile(fp, name, targets)
+
+    print("Morph loaded in %s seconds." % (time.process_time() - t0))
 
 
 if __name__ == '__main__':
