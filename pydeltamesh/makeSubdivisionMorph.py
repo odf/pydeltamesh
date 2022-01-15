@@ -118,7 +118,10 @@ def loadMesh(path, verbose=False):
             if len(fields) == 0:
                 pass
             elif fields[0] == 'f':
-                ns = [ int(s[: s.find('/')]) for s in fields[1:] ]
+                if '/' in line:
+                    ns = [ int(s[: s.find('/')]) for s in fields[1:] ]
+                else:
+                    ns = map(int, fields[1:])
                 vs = [ n - 1 if n > 0 else len(vertices) + n for n in ns]
                 faces.append(vs)
                 faceGroups.append(group)
