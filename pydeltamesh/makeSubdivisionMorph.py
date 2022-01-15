@@ -130,6 +130,28 @@ def loadMesh(path, verbose=False):
     return Mesh(_np.array(vertices), faces, faceGroups)
 
 
+def saveMesh(path, mesh):
+    lines = []
+
+    for v in mesh.vertices:
+        lines.append("v %.8f %.8f %.8f\n" % tuple(v))
+
+    group = None
+
+    for i, f in enumerate(mesh.faces):
+        if mesh.faceGroups[i] != group:
+            group = mesh.faceGroups[i]
+            lines.append("g %s\n" % group)
+
+        lines.append("f")
+        for v in f:
+            lines.append(" %s//" % (v + 1))
+        lines.append("\n")
+
+    with open(path, "w") as fp:
+        fp.write("".join(lines))
+
+
 def usedVertices(mesh):
     used = set()
     for f in mesh.faces:
