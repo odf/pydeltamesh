@@ -10,7 +10,7 @@ def loadSubdMorph(name, path):
         loadMesh, makeTargets, usedVertices, writeInjectionPoseFile
     )
 
-    t0 = time.process_time()
+    t0 = time.time()
 
     morph = loadMesh(path, verbose=True)
 
@@ -40,7 +40,7 @@ def loadSubdMorph(name, path):
     os.remove(pmdPath)
     os.remove(pz2Path)
 
-    print("Morph loaded in %s seconds." % (time.process_time() - t0))
+    print("Morph loaded in %s seconds." % (time.time() - t0))
 
 
 if __name__ == '__main__':
