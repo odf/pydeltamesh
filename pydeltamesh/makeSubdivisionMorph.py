@@ -169,6 +169,9 @@ def usedVertices(mesh):
 
 def expandNumbering(mesh, used):
     nv = len(mesh.vertices)
+    if len(used) < nv:
+        used += range(used[-1] + 1, nv + used[-1] + 1 - len(used))
+
     vertsOut = _np.zeros((used[nv - 1] + 1, 3))
     for i in range(nv):
         vertsOut[used[i]] = mesh.vertices[i]
@@ -176,6 +179,23 @@ def expandNumbering(mesh, used):
     facesOut = []
     for f in mesh.faces:
         facesOut.append([used[i] for i in f])
+
+    return mesh._replace(vertices=vertsOut, faces=facesOut)
+
+
+def compressNumbering(mesh, used):
+    nv = len(used)
+    vertsOut = _np.zeros((nv, 3))
+    for i in range(nv):
+        vertsOut[i] = mesh.vertices[used[i]]
+
+    mapping = _np.full(len(mesh.vertices), -1)
+    for i in range(nv):
+        mapping[used[i]] = i
+
+    facesOut = []
+    for f in mesh.faces:
+        facesOut.append([mapping[i] for i in f])
 
     return mesh._replace(vertices=vertsOut, faces=facesOut)
 

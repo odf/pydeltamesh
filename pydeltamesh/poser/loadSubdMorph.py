@@ -6,13 +6,11 @@ def loadSubdMorph(name, path, postTransform):
 
     from pydeltamesh.fileio.pmd import write_pmd
     from pydeltamesh.poser import poserUtils
-    from pydeltamesh.makeSubdivisionMorph import (
-        loadMesh, makeTargets, usedVertices, writeInjectionPoseFile
-    )
+    from pydeltamesh import makeSubdivisionMorph as subd
 
     t0 = time.time()
 
-    morph = loadMesh(path, verbose=True)
+    morph = subd.loadMesh(path, verbose=True)
 
     if not name:
         name = os.path.splitext(os.path.split(path)[1])[0]
@@ -22,9 +20,12 @@ def loadSubdMorph(name, path, postTransform):
 
     unwelded = poserUtils.getUnweldedBaseMesh(figure)
     welded = poserUtils.getWeldedBaseMesh(figure)
-    used = usedVertices(welded)
+    used = subd.usedVertices(welded)
 
-    targets = makeTargets(
+    morph = subd.compressNumbering(morph, sorted(subd.usedVertices(morph)))
+    morph = subd.expandNumbering(morph, sorted(used))
+
+    targets = subd.makeTargets(
         name, unwelded, welded, morph, used,
         postTransform=postTransform, verbose=True
     )
@@ -37,7 +38,7 @@ def loadSubdMorph(name, path, postTransform):
         write_pmd(fp, targets)
 
     with open(pz2Path, "w") as fp:
-        writeInjectionPoseFile(
+        subd.writeInjectionPoseFile(
             fp, name, targets, pmdPath=pmdPath, postTransform=postTransform
         )
 
