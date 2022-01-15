@@ -67,7 +67,7 @@ def run(unweldedBasePath, weldedBasePath, morphPath, name, verbose):
 
 
 def makeTargets(
-    name, unwelded, welded, morph, used, skipSubd=False, verbose=False
+    name, unwelded, welded, morph, used, postTransform=False, verbose=False
 ):
     from pydeltamesh.mesh.subd import Complex, subdivideTopology
 
@@ -86,13 +86,18 @@ def makeTargets(
     vertsMorphed = bakeDownMorph(
         welded.vertices, morph.vertices, complexes, verbose
     )
-    weldedMorphed = welded._replace(vertices=vertsMorphed)
-    targets = makeBaseTargets(name, unwelded, weldedMorphed, used, verbose)
 
-    if not skipSubd:
-        targets.append(makeSubdTarget(
-            name, weldedMorphed, morph, complexes, verbose
-        ))
+    if postTransform:
+        displacements = vertsMorphed - welded.vertices
+    else:
+        displacements = vertsMorphed - unwelded.vertices
+
+    targets = makeBaseTargets(name, unwelded, displacements, used, verbose)
+
+    weldedMorphed = welded._replace(vertices=vertsMorphed)
+    targets.append(makeSubdTarget(
+        name, weldedMorphed, morph, complexes, verbose
+    ))
 
     return targets
 
@@ -196,7 +201,7 @@ def bakeDownMorph(baseVerts, morphVerts, complexes, verbose=False):
     return baseVerts + morphVerts[: n] - verts[: n]
 
 
-def makeBaseTargets(name, baseMesh, morphedMesh, used, verbose=False):
+def makeBaseTargets(name, baseMesh, displacements, used, verbose=False):
     from uuid import uuid4
     from pydeltamesh.fileio.pmd import Deltas, MorphTarget
 
@@ -219,7 +224,7 @@ def makeBaseTargets(name, baseMesh, morphedMesh, used, verbose=False):
 
         for v in verts:
             if v in used:
-                d = morphedMesh.vertices[v] - baseMesh.vertices[v]
+                d = displacements[v]
                 if norm(d) > 1e-5:
                     idcs.append(v)
                     vecs.append(d)
@@ -320,7 +325,9 @@ def norm(v):
     return sum(x * x for x in v)**0.5
 
 
-def writeInjectionPoseFile(fp, name, targets, pmdPath=None):
+def writeInjectionPoseFile(
+    fp, name, targets, pmdPath=None, postTransform=False
+):
     from pydeltamesh.fileio.poserFile import PoserFile
 
     if pmdPath is None:
@@ -357,6 +364,9 @@ def writeInjectionPoseFile(fp, name, targets, pmdPath=None):
         next(targetNode.select('numbDeltas')).rest = str(
             target.deltas.numb_deltas
         )
+
+        if postTransform:
+            next(targetNode.select('afterBend')).rest = '1'
 
         next(root.select('}')).prependSibling(actor)
 
@@ -409,6 +419,7 @@ actor BODY:1
             numbDeltas 0
             useBinaryMorph 1
             blendType 0
+            afterBend 0
             }
         }
     }

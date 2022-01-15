@@ -1,4 +1,4 @@
-def loadSubdMorph(name, path):
+def loadSubdMorph(name, path, postTransform):
     import time
     import os
 
@@ -24,7 +24,10 @@ def loadSubdMorph(name, path):
     welded = poserUtils.getWeldedBaseMesh(figure)
     used = usedVertices(welded)
 
-    targets = makeTargets(name, unwelded, welded, morph, used, verbose=True)
+    targets = makeTargets(
+        name, unwelded, welded, morph, used,
+        postTransform=postTransform, verbose=True
+    )
 
     tempdir = poser.TempLocation()
     pmdPath = os.path.join(tempdir, "%s.pmd" % name)
@@ -34,7 +37,9 @@ def loadSubdMorph(name, path):
         write_pmd(fp, targets)
 
     with open(pz2Path, "w") as fp:
-        writeInjectionPoseFile(fp, name, targets, pmdPath=pmdPath)
+        writeInjectionPoseFile(
+            fp, name, targets, pmdPath=pmdPath, postTransform=postTransform
+        )
 
     scene.LoadLibraryPose(pz2Path)
     os.remove(pmdPath)
@@ -57,10 +62,12 @@ if __name__ == '__main__':
     success = textEntry.Show()
     name = textEntry.Text() if success else None
 
+    postTransform = poser.DialogSimple.YesNo("Make a post-transform morph?")
+
     chooser = poser.DialogFileChooser(
         poser.kDialogFileChooserOpen,
         message="Select an *.obj file"
     )
     if chooser.Show():
         path = chooser.Path()
-        loadSubdMorph(name, path)
+        loadSubdMorph(name, path, postTransform)
