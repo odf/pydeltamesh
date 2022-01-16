@@ -10,13 +10,17 @@ def loadSubdMorph(name, path, postTransform):
 
     t0 = time.time()
 
-    morph = subd.loadMesh(path, verbose=True)
+    scene = poser.Scene()
+    figure = scene.CurrentFigure()
+
+    def log(s):
+        print(s)
+        scene.ProcessSomeEvents(5)
+
+    morph = subd.loadMesh(path, log=log)
 
     if not name:
         name = os.path.splitext(os.path.split(path)[1])[0]
-
-    scene = poser.Scene()
-    figure = scene.CurrentFigure()
 
     unwelded = poserUtils.getUnweldedBaseMesh(figure)
     welded = poserUtils.getWeldedBaseMesh(figure)
@@ -27,7 +31,7 @@ def loadSubdMorph(name, path, postTransform):
 
     targets = subd.makeTargets(
         name, unwelded, welded, morph, used,
-        postTransform=postTransform, verbose=True
+        postTransform=postTransform, log=log
     )
 
     tempdir = poser.TempLocation()

@@ -43,21 +43,21 @@ def parseArguments():
     return parser.parse_args()
 
 
-def run(unweldedBasePath, weldedBasePath, morphPath, name, verbose):
+def run(unweldedBasePath, weldedBasePath, morphPath, name, log=None):
     import os.path
     from pydeltamesh.fileio.pmd import write_pmd
 
     if name is None:
         name = os.path.splitext(os.path.split(morphPath)[1])[0]
 
-    unwelded = loadMesh(unweldedBasePath, verbose)
-    weldedRaw = loadMesh(weldedBasePath, verbose)
-    morph = loadMesh(morphPath, verbose)
+    unwelded = loadMesh(unweldedBasePath, log=log)
+    weldedRaw = loadMesh(weldedBasePath, log=log)
+    morph = loadMesh(morphPath, log=log)
 
     used = usedVertices(morph)
     welded = expandNumbering(weldedRaw, sorted(used))
 
-    targets = makeTargets(name, unwelded, welded, morph, used, verbose=True)
+    targets = makeTargets(name, unwelded, welded, morph, used, log=log)
 
     with open("%s.pmd" % name, "wb") as fp:
         write_pmd(fp, targets)
@@ -67,7 +67,7 @@ def run(unweldedBasePath, weldedBasePath, morphPath, name, verbose):
 
 
 def makeTargets(
-    name, unwelded, welded, morph, used, postTransform=False, verbose=False
+    name, unwelded, welded, morph, used, postTransform=False, log=None
 ):
     from pydeltamesh.mesh.subd import Complex, subdivideTopology
 
@@ -84,7 +84,7 @@ def makeTargets(
             complexes.append(cx)
 
     vertsMorphed = bakeDownMorph(
-        welded.vertices, morph.vertices, complexes, verbose
+        welded.vertices, morph.vertices, complexes, log=log
     )
 
     if postTransform:
@@ -92,19 +92,19 @@ def makeTargets(
     else:
         displacements = vertsMorphed - unwelded.vertices
 
-    targets = makeBaseTargets(name, unwelded, displacements, used, verbose)
+    targets = makeBaseTargets(name, unwelded, displacements, used, log=log)
 
     weldedMorphed = welded._replace(vertices=vertsMorphed)
     targets.append(makeSubdTarget(
-        name, weldedMorphed, morph, complexes, verbose
+        name, weldedMorphed, morph, complexes, log=log
     ))
 
     return targets
 
 
-def loadMesh(path, verbose=False):
-    if verbose:
-        print("Loading mesh from %s..." % path)
+def loadMesh(path, log=None):
+    if log:
+        log("Loading mesh from %s..." % path)
 
     with open(path) as fp:
         vertices = []
@@ -130,8 +130,8 @@ def loadMesh(path, verbose=False):
             elif fields[0] == 'v':
                 vertices.append([float(s) for s in fields[1:]])
 
-    if verbose:
-        print("Loaded mesh with %d vertices and %d faces." % (
+    if log:
+        log("Loaded mesh with %d vertices and %d faces." % (
             len(vertices), len(faces)
         ))
 
@@ -200,7 +200,7 @@ def compressNumbering(mesh, used):
     return mesh._replace(vertices=vertsOut, faces=facesOut)
 
 
-def bakeDownMorph(baseVerts, morphVerts, complexes, verbose=False):
+def bakeDownMorph(baseVerts, morphVerts, complexes, log=None):
     from pydeltamesh.mesh.subd import (
         adjustVertexData, interpolatePerVertexData
     )
@@ -208,8 +208,8 @@ def bakeDownMorph(baseVerts, morphVerts, complexes, verbose=False):
     if len(complexes) == 0:
         return morphVerts
 
-    if verbose:
-        print("Subdividing for baking...")
+    if log:
+        log("Subdividing for baking...")
 
     n = len(baseVerts)
 
@@ -218,18 +218,18 @@ def bakeDownMorph(baseVerts, morphVerts, complexes, verbose=False):
         verts = interpolatePerVertexData(verts, complexes[i])
     verts = adjustVertexData(verts, complexes[-1])
 
-    if verbose:
-        print("Subdivided %d times." % len(complexes))
+    if log:
+        log("Subdivided %d times." % len(complexes))
 
     return baseVerts + morphVerts[: n] - verts[: n]
 
 
-def makeBaseTargets(name, baseMesh, displacements, used, verbose=False):
+def makeBaseTargets(name, baseMesh, displacements, used, log=None):
     from uuid import uuid4
     from pydeltamesh.fileio.pmd import Deltas, MorphTarget
 
-    if verbose:
-        print("Finding deltas for level 0")
+    if log:
+        log("Finding deltas for level 0")
 
     vertsByGroup = {}
     for i in range(len(baseMesh.faces)):
@@ -260,15 +260,15 @@ def makeBaseTargets(name, baseMesh, displacements, used, verbose=False):
             key = str(uuid4())
             targets.append(MorphTarget(name, actor, key, deltas, {}))
 
-    if verbose:
-        print("Found a total of %d deltas for %d actors." % (
+    if log:
+        log("Found a total of %d deltas for %d actors." % (
             nrDeltas, len(targets)
         ))
 
     return targets
 
 
-def makeSubdTarget(name, baseSubd0, morph, complexes, verbose=False):
+def makeSubdTarget(name, baseSubd0, morph, complexes, log=None):
     from uuid import uuid4
     from pydeltamesh.mesh.subd import (
         interpolatePerVertexData, subdivideTopology
@@ -284,28 +284,28 @@ def makeSubdTarget(name, baseSubd0, morph, complexes, verbose=False):
     verts = baseSubd0.vertices
 
     for level in range(1, subdLevel + 1):
-        if verbose:
-            print("Subdividing morph for level %d..." % level)
+        if log:
+            log("Subdividing morph for level %d..." % level)
 
         verts = interpolatePerVertexData(verts, complexes[level - 1])
         faces = subdivideTopology(complexes[level - 1])
 
         morphedVerts = bakeDownMorph(
-            verts, morph.vertices, complexes[level:], verbose
+            verts, morph.vertices, complexes[level:], log=log
         )
 
-        if verbose:
-            print("Computing vertex normals...")
+        if log:
+            log("Computing vertex normals...")
         normals = vertexNormals(verts, faces)
 
-        if verbose:
-            print("Finding deltas for level %d..." % level)
+        if log:
+            log("Finding deltas for level %d..." % level)
 
         deltas, displacements = findSubdDeltas(verts, morphedVerts, normals)
         subdDeltas[level] = deltas
 
-        if verbose:
-            print("Found %d deltas." % len(deltas.indices))
+        if log:
+            log("Found %d deltas." % len(deltas.indices))
 
         if level < subdLevel:
             verts[deltas.indices] += displacements
@@ -461,6 +461,7 @@ if __name__ == '__main__':
     weldedpath = args.weldedpath
     morphpath = args.morphpath
     morphname = args.morphname
-    verbose = args.verbose
 
-    run(basepath, weldedpath, morphpath, morphname, verbose)
+    log = print if args.verbose else None
+
+    run(basepath, weldedpath, morphpath, morphname, log)
