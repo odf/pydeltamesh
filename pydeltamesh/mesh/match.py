@@ -365,7 +365,7 @@ if have_typing:
     AssignmentFn = Callable[[np.ndarray], list[tuple[int, int]]]
 
 
-def match(topoA, topoB, assignWeights, metric=None, verbose=False):
+def match(topoA, topoB, assignWeights, metric=None, log=None):
     # type: (Topology, Topology, AssignmentFn, CostFn, bool) -> np.ndarray
 
     if metric is None:
@@ -406,13 +406,20 @@ def match(topoA, topoB, assignWeights, metric=None, verbose=False):
                 if compA[j][0] == compB[k][np.argmin(costs)]:
                     nrPartsIdentical += 1
 
-    if verbose:
+    if log:
         nrPartsA = sum(len(compA) for compA in topoA.values())
         nrPartsB = sum(len(compB) for compB in topoB.values())
-        print("Matched %d parts out of %d and %d" % (
+        log("Matched %d parts out of %d and %d" % (
             nrPartsMatched, nrPartsA, nrPartsB
         ))
         if nrPartsIdentical > 0:
-            print("For %d parts no renumbering was necessary" % nrPartsIdentical)
+            log("For %d parts no renumbering was necessary" % nrPartsIdentical)
 
-    return list(zip(matchedVerticesInA, matchedVerticesInB))
+    mapping = list(zip(matchedVerticesInA, matchedVerticesInB))
+
+    if log:
+        nrMapped = len(mapping)
+        nrMoved = len([u for u, v in mapping if u != v])
+        log("Mapped %d vertices, moved %d" % (nrMapped, nrMoved))
+
+    return mapping

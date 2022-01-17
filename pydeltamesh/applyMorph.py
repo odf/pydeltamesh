@@ -1,48 +1,3 @@
-def run():
-    import os.path
-
-    from pydeltamesh.fileio import obj
-    from pydeltamesh.mesh.match import match
-    from pydeltamesh.util.optimize import minimumWeightAssignment
-
-    args = parseArguments()
-
-    topoBase, dataBase = loadAndProcessMesh(args.basepath)
-    if args.verbose:
-        print("Counts for base: %s" % symmetryCounts(topoBase))
-
-    topoMorph, dataMorph = loadAndProcessMesh(args.morphpath)
-    if args.verbose:
-        print("Counts for morph: %s" % symmetryCounts(topoMorph))
-
-    mapping = match(
-        topoBase, topoMorph, minimumWeightAssignment, verbose=args.verbose
-    )
-    if args.verbose:
-        nrMapped = len(list(mapping))
-        nrMoved = len([u for u, v in mapping if u != v])
-        print("Mapped %d vertices, moved %d" % (nrMapped, nrMoved))
-
-    vertsOut = dataBase.vertices.copy()
-    vertsMorph = dataMorph.vertices
-
-    for v, w in mapping:
-        vertsOut[v] = vertsMorph[w]
-
-    dataOut = dataBase._replace(vertices=vertsOut)
-
-    if args.show:
-        shifted = dataBase.vertices - [0.1, 0.0, 0.0]
-        display(dataBase._replace(vertices=shifted), dataOut)
-
-    outname, outext = os.path.splitext(args.outpath)
-    if outext != ".obj":
-        outname += outext
-
-    with open(outname + ".obj", "w") as fp:
-        obj.save(fp, dataOut, outname + ".mtl", writeNormals=False)
-
-
 def parseArguments():
     import argparse
 
@@ -78,16 +33,72 @@ def parseArguments():
     return parser.parse_args()
 
 
-def loadAndProcessMesh(path):
+def run():
+    args = parseArguments()
+
+    dataBase = loadMesh(args.basepath)
+    dataMorph = loadMesh(args.morphpath)
+
+    log = print if args.verbose else None
+
+    dataOut = mapVertices(dataBase, dataMorph, log=log)
+
+    if args.show:
+        shifted = dataBase.vertices - [0.1, 0.0, 0.0]
+        display(dataBase._replace(vertices=shifted), dataOut)
+
+    saveMesh(args.outpath, dataOut)
+
+
+def loadMesh(path):
     from pydeltamesh.fileio import obj
-    from pydeltamesh.mesh.match import topology
 
     with open(path) as fp:
-        data = obj.load(fp, path)
+        mesh = obj.load(fp, path)
 
-    topo = topology([ f.vertices for f in data.faces ], data.vertices)
+    return mesh
 
-    return topo, data
+
+def saveMesh(path, mesh):
+    import os.path
+    from pydeltamesh.fileio import obj
+
+    outname, outext = os.path.splitext(path)
+    if outext != ".obj":
+        outname += outext
+
+    objpath = outname + '.obj'
+    mtlpath = outname + '.mtl'
+
+    with open(objpath, "w") as fp:
+        obj.save(fp, mesh, mtlpath, writeNormals=False)
+
+
+def mapVertices(dataBase, dataMorph, log=None):
+    from pydeltamesh.mesh.match import match, topology
+    from pydeltamesh.util.optimize import minimumWeightAssignment
+
+    topoBase = topology(
+        [ f.vertices for f in dataBase.faces ], dataBase.vertices
+    )
+    if log:
+        log("Counts for base: %s" % symmetryCounts(topoBase))
+
+    topoMorph = topology(
+        [ f.vertices for f in dataMorph.faces ], dataMorph.vertices
+    )
+    if log:
+        log("Counts for morph: %s" % symmetryCounts(topoMorph))
+
+    mapping = match(topoBase, topoMorph, minimumWeightAssignment, log=log)
+
+    vertsOut = dataBase.vertices.copy()
+    vertsMorph = dataMorph.vertices
+
+    for v, w in mapping:
+        vertsOut[v] = vertsMorph[w]
+
+    return dataBase._replace(vertices=vertsOut)
 
 
 def symmetryCounts(topo):
