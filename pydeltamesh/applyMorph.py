@@ -78,18 +78,26 @@ def mapVertices(dataBase, dataMorph, log=None):
     from pydeltamesh.mesh.match import match, topology
     from pydeltamesh.util.optimize import minimumWeightAssignment
 
+    if log:
+        log("Analyzing base mesh...")
     topoBase = topology(
         [ f.vertices for f in dataBase.faces ], dataBase.vertices
     )
     if log:
-        log("Counts for base: %s" % symmetryCounts(topoBase))
+        n = sum(len(t) for t in topoBase.values())
+        log("Base mesh has %d loose parts." % n)
 
+    if log:
+        log("Analyzing morphed mesh...")
     topoMorph = topology(
         [ f.vertices for f in dataMorph.faces ], dataMorph.vertices
     )
     if log:
-        log("Counts for morph: %s" % symmetryCounts(topoMorph))
+        n = sum(len(t) for t in topoMorph.values())
+        log("Morphed mesh has %d loose parts." % n)
 
+    if log:
+        log("Matching the base and morphed mesh by loose parts...")
     mapping = match(topoBase, topoMorph, minimumWeightAssignment, log=log)
 
     vertsOut = dataBase.vertices.copy()
@@ -99,13 +107,6 @@ def mapVertices(dataBase, dataMorph, log=None):
         vertsOut[v] = vertsMorph[w]
 
     return dataBase._replace(vertices=vertsOut)
-
-
-def symmetryCounts(topo):
-    return [
-        [ [ len(vs) for vs in inst ] for inst in val ]
-        for val in topo.values()
-    ]
 
 
 def display(*meshes):
