@@ -5,8 +5,11 @@ import numpy as np
 
 try:
     import typing
+    list[int]
     have_typing = True
 except ImportError:
+    have_typing = False
+except TypeError:
     have_typing = False
 
 
