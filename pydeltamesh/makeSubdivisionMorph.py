@@ -340,8 +340,10 @@ def vertexNormals(vertices, faces):
 
         ns[qs] += _np.cross(vs[qs] - vs[ps], vs[rs] - vs[qs])
 
-    ds = _np.sqrt(_np.sum(ns * ns, axis=1)).reshape(-1, 1)
-    return ns / ds
+    ds = _np.sqrt(_np.sum(ns * ns, axis=1))
+    ds = _np.where(ds == 0, 1.0, ds)
+
+    return ns / ds.reshape(-1, 1)
 
 
 def norm(v):
