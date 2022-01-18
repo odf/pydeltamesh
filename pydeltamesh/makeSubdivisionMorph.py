@@ -189,7 +189,7 @@ def compressNumbering(mesh, used):
     for i in range(nv):
         vertsOut[i] = mesh.vertices[used[i]]
 
-    mapping = _np.full(len(mesh.vertices), -1)
+    mapping = [-1] * len(mesh.vertices)
     for i in range(nv):
         mapping[used[i]] = i
 
