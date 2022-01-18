@@ -39,7 +39,10 @@ def run():
     dataBase = loadMesh(args.basepath)
     dataMorph = loadMesh(args.morphpath)
 
-    log = print if args.verbose else None
+    if args.verbose:
+        log = lambda s: sys.stdout.write(s + '\n')
+    else:
+        log = None
 
     dataOut = mapVertices(dataBase, dataMorph, log=log)
 

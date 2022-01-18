@@ -462,6 +462,9 @@ if __name__ == '__main__':
     morphpath = args.morphpath
     morphname = args.morphname
 
-    log = print if args.verbose else None
+    if args.verbose:
+        log = lambda s: sys.stdout.write(s + '\n')
+    else:
+        log = None
 
     run(basepath, weldedpath, morphpath, morphname, log)
