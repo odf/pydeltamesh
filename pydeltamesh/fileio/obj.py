@@ -63,7 +63,7 @@ def load(fp, path=None, skipNormals=False, skipUVs=False):
         elif cmd == 'o':
             obj = pars[0]
         elif cmd == 'g':
-            group = pars[0]
+            group = pars[0] if len(pars) > 0 else None
         elif cmd == 'usemtl':
             material = pars[0]
         elif cmd == 's':
@@ -130,7 +130,7 @@ def save(fp, mesh, mtlpath = None, writeNormals=True):
         lines.append("v %.8f %.8f %.8f\n" % tuple(v))
 
     for v in mesh.texverts:
-        lines.append("vt %.8f %.8f\n" % tuple(v))
+        lines.append("vt %.8f %.8f\n" % tuple(v[:2]))
 
     if writeNormals and mesh.normals:
         for v in mesh.normals:
