@@ -43,6 +43,11 @@ if __name__ == '__main__':
                 len(meshMorphed.vertices), len(meshMorphed.faces)
             ))
 
+            if poser.DialogSimple.YesNo("Flip along x-axis?"):
+                meshMorphed.vertices[:, 0] *= -1
+                for f in meshMorphed.faces:
+                    f.vertices.reverse()
+
             meshOut = mapVertices(meshBase, meshMorphed, log=log)
 
             chooser = poser.DialogFileChooser(
