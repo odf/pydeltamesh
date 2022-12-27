@@ -100,7 +100,14 @@ def compose(dataTarget, dataSource, lookupTarget, lookupSource):
         key, f = canonicalFace(face)
         faceLookup[key] = f
 
+    shifts = {}
+    tiles = set(lookupTarget.values())
+    for i, k in enumerate(tiles):
+        shifts[k] = i
+
     faces = []
+    objVertices = []
+    vertexLookup = {}
 
     for face in dataSource.faces:
         key, sourceFace = canonicalFace(face)
@@ -110,15 +117,25 @@ def compose(dataTarget, dataSource, lookupTarget, lookupSource):
         material = lookupSource.get(sourceFace.material)
 
         if not (group is None or material is None):
+            faceVertices = []
+            for k in targetFace.texverts:
+                if not (k, group) in vertexLookup:
+                    vertexLookup[k, group] = len(objVertices)
+                    x, y = dataTarget.texverts[k]
+                    x += shifts[group] - 0.5
+                    y -= 0.5
+                    objVertices.append((x, y, 0.0))
+                faceVertices.append(vertexLookup[k, group])
+
             faces.append(sourceFace._replace(
-                vertices=targetFace.texverts,
+                vertices=faceVertices,
                 normals=[],
                 group=group,
                 material=material
             ))
 
     return Mesh(
-        vertices=addDim(dataTarget.texverts),
+        vertices=np.array(objVertices),
         normals=np.array([]),
         texverts=dataSource.texverts,
         faces=faces,
