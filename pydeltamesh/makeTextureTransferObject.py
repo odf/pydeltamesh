@@ -106,15 +106,16 @@ def compose(dataTarget, dataSource, lookupTarget, lookupSource):
         key, sourceFace = canonicalFace(face)
         targetFace = faceLookup[key]
 
-        group = lookupTarget.get(targetFace.material, targetFace.material)
-        material = lookupSource.get(sourceFace.material, sourceFace.material)
+        group = lookupTarget.get(targetFace.material)
+        material = lookupSource.get(sourceFace.material)
 
-        faces.append(sourceFace._replace(
-            vertices=targetFace.texverts,
-            normals=[],
-            group=group,
-            material=material
-        ))
+        if not (group is None or material is None):
+            faces.append(sourceFace._replace(
+                vertices=targetFace.texverts,
+                normals=[],
+                group=group,
+                material=material
+            ))
 
     return Mesh(
         vertices=addDim(dataTarget.texverts),
