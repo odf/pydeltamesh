@@ -30,6 +30,16 @@ def parseArguments():
         type=str,
         help='path for the OBJ-formatted output data'
     )
+    parser.add_argument(
+        "--target_translations",
+        type=str,
+        help='text file specifying material name translation for target'
+    )
+    parser.add_argument(
+        "--source_translations",
+        type=str,
+        help='text file specifying material name translation for source'
+    )
 
     return parser.parse_args()
 
@@ -38,7 +48,10 @@ def run():
     args = parseArguments()
     dataTarget = loadMesh(args.target)
     dataSource = loadMesh(args.source)
-    dataOutput = compose(dataTarget, dataSource)
+    lookupTarget = loadTranslations(args.target_translations)
+    lookupSource = loadTranslations(args.source_translations)
+
+    dataOutput = compose(dataTarget, dataSource, lookupTarget, lookupSource)
     saveMesh(args.output, dataOutput)
 
 
@@ -66,7 +79,22 @@ def saveMesh(path, mesh):
         obj.save(fp, mesh, mtlpath, writeNormals=False)
 
 
-def compose(dataTarget, dataSource):
+def loadTranslations(filepath):
+    with open(filepath) as fp:
+        text = fp.read()
+
+    translation = {}
+    for block in text.split("\n\n"):
+        lines = block.strip().split("\n")
+        dst = lines[0].strip()
+
+        for src in lines[1:]:
+            translation[src.strip()] = dst
+
+    return translation
+
+
+def compose(dataTarget, dataSource, lookupTarget, lookupSource):
     faceLookup = {}
     for face in dataTarget.faces:
         key, f = canonicalFace(face)
@@ -78,10 +106,14 @@ def compose(dataTarget, dataSource):
         key, sourceFace = canonicalFace(face)
         targetFace = faceLookup[key]
 
+        group = lookupTarget.get(targetFace.material, targetFace.material)
+        material = lookupSource.get(sourceFace.material, sourceFace.material)
+
         faces.append(sourceFace._replace(
             vertices=targetFace.texverts,
             normals=[],
-            group=targetFace.material,
+            group=group,
+            material=material
         ))
 
     return Mesh(
