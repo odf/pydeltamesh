@@ -26,19 +26,20 @@ def parseArguments():
         help='mesh with source UVs in OBJ format'
     )
     parser.add_argument(
-        'output',
-        type=str,
-        help='path for the OBJ-formatted output data'
-    )
-    parser.add_argument(
-        "--target_translations",
+        "target_translations",
         type=str,
         help='text file specifying material name translation for target'
     )
     parser.add_argument(
-        "--source_translations",
+        "source_translations",
         type=str,
         help='text file specifying material name translation for source'
+    )
+    parser.add_argument(
+        '-o', '--output',
+        type=str,
+        default="transfer.obj",
+        help='path for the OBJ-formatted output data'
     )
 
     return parser.parse_args()
@@ -48,10 +49,10 @@ def run():
     args = parseArguments()
     dataTarget = loadMesh(args.target)
     dataSource = loadMesh(args.source)
-    lookupTarget = loadTranslations(args.target_translations)
-    lookupSource = loadTranslations(args.source_translations)
+    targetSpec = loadTranslations(args.target_translations)
+    sourceSpec = loadTranslations(args.source_translations)
 
-    dataOutput = compose(dataTarget, dataSource, lookupTarget, lookupSource)
+    dataOutput = compose(dataTarget, dataSource, targetSpec, sourceSpec)
     saveMesh(args.output, dataOutput)
 
 
@@ -83,26 +84,31 @@ def loadTranslations(filepath):
     with open(filepath) as fp:
         text = fp.read()
 
+    tiles = []
     translation = {}
+
     for block in text.split("\n\n"):
         lines = block.strip().split("\n")
         dst = lines[0].strip()
+        tiles.append(dst)
 
         for src in lines[1:]:
             translation[src.strip()] = dst
 
-    return translation
+    return tiles, translation
 
 
-def compose(dataTarget, dataSource, lookupTarget, lookupSource):
+def compose(dataTarget, dataSource, targetSpec, sourceSpec):
     faceLookup = {}
     for face in dataTarget.faces:
         key, f = canonicalFace(face)
         faceLookup[key] = f
 
+    tilesTarget, lookupTarget = targetSpec
+    _, lookupSource = sourceSpec
+
     shifts = {}
-    tiles = set(lookupTarget.values())
-    for i, k in enumerate(tiles):
+    for i, k in enumerate(tilesTarget):
         shifts[k] = i
 
     faces = []
@@ -122,8 +128,8 @@ def compose(dataTarget, dataSource, lookupTarget, lookupSource):
                 if not (k, group) in vertexLookup:
                     vertexLookup[k, group] = len(objVertices)
                     x, y = dataTarget.texverts[k]
-                    x += shifts[group] - 0.5
-                    y -= 0.5
+                    x = (x % 1) + shifts[group] - 0.5
+                    y = (y % 1) - 0.5
                     objVertices.append((x, y, 0.0))
                 faceVertices.append(vertexLookup[k, group])
 
