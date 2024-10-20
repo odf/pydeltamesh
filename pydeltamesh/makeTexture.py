@@ -30,6 +30,18 @@ class OpCode(Enum):
     Gain = 24
 
 
+def bias(a, b):
+    return a**(_np.log(b)/_np.log(0.5))
+
+
+def gain(a, b):
+    return _np.where(
+        a < 0.5,
+        bias(a * 2, 1 - b) / 2,
+        1 - bias((1 - a) * 2, 1 - b) / 2
+    )
+
+
 op = {
     OpCode.Add: lambda a, b: a + b,
     OpCode.Subtract: lambda a, b: a - b,
@@ -53,8 +65,8 @@ op = {
     OpCode.Round: lambda a, _: _np.round(a),
     OpCode.Step: lambda a, b: (a <= b).astype(_np.float32),
     OpCode.Smoothstep: lambda a, _: _np.clip(3 * a**2 - 2 * a**3, 0, 1),
-    #OpCode.Bias: lambda a, b: a + b,
-    #OpCode.Gain: lambda a, b: a + b,
+    OpCode.Bias: bias,
+    OpCode.Gain: gain,
 }
 
 
@@ -167,6 +179,12 @@ class Node(object):
     def smoothstep(self):
         return MathFun(OpCode.Smoothstep, self, 0)
 
+    def bias(self, other):
+        return MathFun(OpCode.Bias, self, other)
+
+    def gain(self, other):
+        return MathFun(OpCode.Gain, self, other)
+
 
 class U(Node):
     def __init__(self, n=512):
@@ -206,7 +224,8 @@ if __name__ == "__main__":
     b = (U() * 10) % 1 < 0.5
     c = U() != V()
     d = ((U() * 4) % 1).smoothstep()
+    e = U().gain(0.8)
 
-    out = d.data
+    out = e.data
 
     Image.fromarray(out * 256).show()
