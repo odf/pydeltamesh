@@ -242,6 +242,51 @@ def format_input(val):
     return f"Node {val.id}" if isinstance(val, Node) else f"Value {val}"
 
 
+def write_poser_file(fp, name, input_nodes, output_nodes):
+    from pydeltamesh.fileio.poserFile import PoserFile
+
+    source = PoserFile(fileTemplate.splitlines())
+    root = source.root
+    compound = next(root.select('actor', 'material', 'shaderTree', 'node'))
+    compound.rest = f'compound {name}'
+    next(compound.select('name')).rest = name.title()
+
+    source.writeTo(fp)
+
+
+fileTemplate = '''{
+version
+    {
+    number 13
+    build 581
+    }
+actor $CURRENT
+    {
+    material Preview
+        {
+        $SELECTEDNODES
+        shaderTree
+            {
+            node compound @name
+                {
+                name @name
+                pos 600 600
+                compoundOutputsPos 10 10
+                compoundInputsPos 670 10
+                compoundShowPreview 1
+                showPreview 0
+                advancedInputsCollapsed 0
+                shaderTree
+                    {
+                    }
+                }
+            }
+        }
+    }
+}
+'''
+
+
 if __name__ == "__main__":
     from PIL import Image
 
@@ -255,3 +300,8 @@ if __name__ == "__main__":
     out = a.data
 
     Image.fromarray(out * 256).show()
+
+    name = "texgen_test"
+
+    with open("%s.mt5" % name, "w") as fp:
+        write_poser_file(fp, name, [u, v], [a])
