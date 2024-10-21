@@ -1,6 +1,7 @@
 from enum import Enum
-
 import numpy as _np
+
+from pydeltamesh.fileio.poserFile import PoserFile
 
 
 class Op(Enum):
@@ -235,7 +236,27 @@ class MathFun(Node):
         op = self.opcode
         in1 = format_input(self.inputs[0])
         in2 = format_input(self.inputs[1])
+
         return f"MathFun_{id}: {op}, inputs = ({in1}, {in2})"
+    
+    def to_poser(self):
+        id = self.id
+        name = f'n{id:03}'
+        op = self.opcode
+        in1, in2 = self.inputs
+
+        node = PoserFile(math_node_template.splitlines()).root
+        node_spec = next(node.select('node'))
+        node_spec.rest = f'math_functions _{name}'
+        next(node_spec.select('name')).rest = name.title()
+        next(node_spec.select('pos')).rest = f'{900 - id * 10} {id * 10}'
+        next(node_spec.select('output', 'exposedAs')).rest = f'_{name}_out'
+
+        math_arg, val1, val2 = list(node_spec.select('nodeInput'))
+        next(math_arg.select('enumValue')).rest = f'{op.value}'
+        # TODO inputs
+
+        return node
 
 
 def format_input(val):
@@ -243,18 +264,23 @@ def format_input(val):
 
 
 def write_poser_file(fp, name, input_nodes, output_nodes):
-    from pydeltamesh.fileio.poserFile import PoserFile
-
-    source = PoserFile(fileTemplate.splitlines())
+    source = PoserFile(file_template.splitlines())
     root = source.root
     compound = next(root.select('actor', 'material', 'shaderTree', 'node'))
     compound.rest = f'compound {name}'
     next(compound.select('name')).rest = name.title()
 
+    tree = next(compound.select('shaderTree'))
+
+    v = output_nodes[0]
+    for node in v.nodes():
+        if hasattr(node, 'to_poser'):
+            next(tree.select('}')).prependSibling(node.to_poser())
+
     source.writeTo(fp)
 
 
-fileTemplate = '''{
+file_template = '''{
 version
     {
     number 13
@@ -284,6 +310,36 @@ actor $CURRENT
         }
     }
 }
+'''
+
+
+math_node_template = '''node math_functions @name
+    {
+    name @name
+    pos @x @y
+    advancedInputsCollapsed 0
+    output Color
+        {
+        exposedAs @outid
+        }
+    nodeInput Math_Argument
+        {
+        name Math_Argument
+        enumValue @opcode
+        }
+    nodeInput Value_1
+        {
+        name Value_1
+        value 1 0 100
+        exposedAs @inid1
+        }
+    nodeInput Value_2
+        {
+        name Value_2
+        value 0 0 100
+        exposedAs @inid2
+        }
+    }
 '''
 
 
