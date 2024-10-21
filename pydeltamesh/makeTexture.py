@@ -3,7 +3,7 @@ from enum import Enum
 import numpy as _np
 
 
-class OpCode(Enum):
+class Op(Enum):
     Add = 1
     Subtract = 2
     Multiply = 3
@@ -31,7 +31,7 @@ class OpCode(Enum):
 
 
 def bias(a, b):
-    return a**(_np.log(b)/_np.log(0.5))
+    return a**(_np.log(b) / _np.log(0.5))
 
 
 def gain(a, b):
@@ -43,87 +43,93 @@ def gain(a, b):
 
 
 op = {
-    OpCode.Add: lambda a, b: a + b,
-    OpCode.Subtract: lambda a, b: a - b,
-    OpCode.Multiply: lambda a, b: a * b,
-    OpCode.Divide: lambda a, b: a / b,
-    OpCode.Sin: lambda a, _: _np.sin(a),
-    OpCode.Cos: lambda a, _: _np.cos(a),
-    OpCode.Tan: lambda a, _: _np.tan(a),
-    OpCode.Sqrt: lambda a, _: _np.sqrt(a),
-    OpCode.Pow: lambda a, b: a ** b,
-    OpCode.Exp: lambda a, _: _np.exp(a),
-    OpCode.Log: lambda a, b: _np.log(a) / _np.log(b),
-    OpCode.Mod: lambda a, b: a % (_np.sign(a) * b),
-    OpCode.Abs: lambda a, _: _np.abs(a),
-    OpCode.Sign: lambda a, _: _np.sign(a),
-    OpCode.Min: lambda a, b: _np.minimum(a, b),
-    OpCode.Max: lambda a, b: _np.maximum(a, b),
-    OpCode.Clamp: lambda a, _: _np.clip(a, 0, 1),
-    OpCode.Ceil: lambda a, _: _np.ceil(a),
-    OpCode.Floor: lambda a, _: _np.floor(a),
-    OpCode.Round: lambda a, _: _np.round(a),
-    OpCode.Step: lambda a, b: (a <= b).astype(_np.float32),
-    OpCode.Smoothstep: lambda a, _: _np.clip(3 * a**2 - 2 * a**3, 0, 1),
-    OpCode.Bias: bias,
-    OpCode.Gain: gain,
+    Op.Add: lambda a, b: a + b,
+    Op.Subtract: lambda a, b: a - b,
+    Op.Multiply: lambda a, b: a * b,
+    Op.Divide: lambda a, b: a / b,
+    Op.Sin: lambda a, _: _np.sin(a),
+    Op.Cos: lambda a, _: _np.cos(a),
+    Op.Tan: lambda a, _: _np.tan(a),
+    Op.Sqrt: lambda a, _: _np.sqrt(a),
+    Op.Pow: lambda a, b: a ** b,
+    Op.Exp: lambda a, _: _np.exp(a),
+    Op.Log: lambda a, b: _np.log(a) / _np.log(b),
+    Op.Mod: lambda a, b: a % (_np.sign(a) * b),
+    Op.Abs: lambda a, _: _np.abs(a),
+    Op.Sign: lambda a, _: _np.sign(a),
+    Op.Min: lambda a, b: _np.minimum(a, b),
+    Op.Max: lambda a, b: _np.maximum(a, b),
+    Op.Clamp: lambda a, _: _np.clip(a, 0, 1),
+    Op.Ceil: lambda a, _: _np.ceil(a),
+    Op.Floor: lambda a, _: _np.floor(a),
+    Op.Round: lambda a, _: _np.round(a),
+    Op.Step: lambda a, b: (a <= b).astype(_np.float32),
+    Op.Smoothstep: lambda a, _: _np.clip(3 * a**2 - 2 * a**3, 0, 1),
+    Op.Bias: bias,
+    Op.Gain: gain,
 }
 
 
 class Node(object):
-    __next_id = [1]
+    __nodes = []
 
     def __init__(self):
-        self.id = self.__next_id[0]
-        self.__next_id[0] += 1
+        self.id = len(self.__nodes)
+        self.__nodes.append(self)
+
+    def nodes(self):
+        return self.__nodes
+
+    def format(self):
+        return f"Node_{self.id}"
 
     def __add__(self, other):
-        return MathFun(OpCode.Add, self, other)
+        return MathFun(Op.Add, self, other)
 
     def __radd__(self, other):
-        return MathFun(OpCode.Add, other, self)
+        return MathFun(Op.Add, other, self)
 
     def __sub__(self, other):
-        return MathFun(OpCode.Subtract, self, other)
+        return MathFun(Op.Subtract, self, other)
 
     def __rsub__(self, other):
-        return MathFun(OpCode.Subtract, other, self)
+        return MathFun(Op.Subtract, other, self)
 
     def __mul__(self, other):
-        return MathFun(OpCode.Multiply, self, other)
+        return MathFun(Op.Multiply, self, other)
 
     def __rmul__(self, other):
-        return MathFun(OpCode.Multiply, other, self)
+        return MathFun(Op.Multiply, other, self)
 
     def __truediv__(self, other):
-        return MathFun(OpCode.Divide, self, other)
+        return MathFun(Op.Divide, self, other)
 
     def __rtruediv__(self, other):
-        return MathFun(OpCode.Divide, other, self)
+        return MathFun(Op.Divide, other, self)
 
     def __pow__(self, other):
-        return MathFun(OpCode.Pow, self, other)
+        return MathFun(Op.Pow, self, other)
 
     def __rpow__(self, other):
-        return MathFun(OpCode.Pow, other, self)
+        return MathFun(Op.Pow, other, self)
 
     def __mod__(self, other):
-        return MathFun(OpCode.Mod, self, other)
+        return MathFun(Op.Mod, self, other)
 
     def __rmod__(self, other):
-        return MathFun(OpCode.Mod, other, self)
+        return MathFun(Op.Mod, other, self)
 
     def __le__(self, other):
-        return MathFun(OpCode.Step, self, other)
+        return MathFun(Op.Step, self, other)
 
     def __ge__(self, other):
-        return MathFun(OpCode.Step, other, self)
+        return MathFun(Op.Step, other, self)
 
     def __eq__(self, other):
         return (self <= other) * (self >= other)
 
     def inv(self):
-        return MathFun(OpCode.Subtract, 1, self)
+        return MathFun(Op.Subtract, 1, self)
 
     def __lt__(self, other):
         return (self >= other).inv()
@@ -135,55 +141,55 @@ class Node(object):
         return (self == other).inv()
 
     def sin(self):
-        return MathFun(OpCode.Sin, self, 0)
+        return MathFun(Op.Sin, self, 0)
 
     def cos(self):
-        return MathFun(OpCode.Cos, self, 0)
+        return MathFun(Op.Cos, self, 0)
 
     def tan(self):
-        return MathFun(OpCode.Tan, self, 0)
+        return MathFun(Op.Tan, self, 0)
 
     def sqrt(self):
-        return MathFun(OpCode.Sqrt, self, 0)
+        return MathFun(Op.Sqrt, self, 0)
 
     def exp(self):
-        return MathFun(OpCode.Exp, self, 0)
+        return MathFun(Op.Exp, self, 0)
 
     def log(self, other):
-        return MathFun(OpCode.Log, self, other)
+        return MathFun(Op.Log, self, other)
 
     def abs(self):
-        return MathFun(OpCode.Abs, self, 0)
+        return MathFun(Op.Abs, self, 0)
 
     def sign(self):
-        return MathFun(OpCode.Sign, self, 0)
+        return MathFun(Op.Sign, self, 0)
 
     def min(self, other):
-        return MathFun(OpCode.Min, self, other)
+        return MathFun(Op.Min, self, other)
 
     def max(self, other):
-        return MathFun(OpCode.Max, self, other)
+        return MathFun(Op.Max, self, other)
 
     def clamp(self):
-        return MathFun(OpCode.Clamp, self, 0)
+        return MathFun(Op.Clamp, self, 0)
 
     def ceil(self):
-        return MathFun(OpCode.Ceil, self, 0)
+        return MathFun(Op.Ceil, self, 0)
 
     def floor(self):
-        return MathFun(OpCode.Floor, self, 0)
+        return MathFun(Op.Floor, self, 0)
 
     def round(self):
-        return MathFun(OpCode.Round, self, 0)
+        return MathFun(Op.Round, self, 0)
 
     def smoothstep(self):
-        return MathFun(OpCode.Smoothstep, self, 0)
+        return MathFun(Op.Smoothstep, self, 0)
 
     def bias(self, other):
-        return MathFun(OpCode.Bias, self, other)
+        return MathFun(Op.Bias, self, other)
 
     def gain(self, other):
-        return MathFun(OpCode.Gain, self, other)
+        return MathFun(Op.Gain, self, other)
 
 
 class U(Node):
@@ -195,6 +201,9 @@ class U(Node):
             _np.arange(0.0, 1.0, 1.0 / n)
         )
 
+    def format(self):
+        return f"U_{self.id}"
+
 
 class V(Node):
     def __init__(self, n=512):
@@ -205,6 +214,9 @@ class V(Node):
             _np.full(n, 1.0)
         )
 
+    def format(self):
+        return f"V_{self.id}"
+
 
 class MathFun(Node):
     def __init__(self, opcode, val1, val2):
@@ -213,19 +225,33 @@ class MathFun(Node):
         v1 = val1.data if isinstance(val1, Node) else val1
         v2 = val2.data if isinstance(val2, Node) else val2
 
+        self.opcode = opcode
+        self.inputs = (val1, val2)
         self.data = op[opcode](v1, v2)
         self.data[~_np.isfinite(self.data)] = 0.0
+
+    def format(self):
+        id = self.id
+        op = self.opcode
+        in1 = format_input(self.inputs[0])
+        in2 = format_input(self.inputs[1])
+        return f"MathFun_{id}: {op}, inputs = ({in1}, {in2})"
+
+
+def format_input(val):
+    return f"Node {val.id}" if isinstance(val, Node) else f"Value {val}"
 
 
 if __name__ == "__main__":
     from PIL import Image
 
-    a = ((U() - 0.5)**2 + (V() - 0.5)**2).sqrt() < 0.5
-    b = (U() * 10) % 1 < 0.5
-    c = U() != V()
-    d = ((U() * 4) % 1).smoothstep()
-    e = U().gain(0.8)
+    u = U()
+    v = V()
+    a = ((u - 0.5)**2 + (v - 0.5)**2).sqrt() < 0.5
 
-    out = e.data
+    for node in a.nodes():
+        print(node.format())
+
+    out = a.data
 
     Image.fromarray(out * 256).show()
