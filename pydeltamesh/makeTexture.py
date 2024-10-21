@@ -78,6 +78,9 @@ class Node(object):
         self.id = len(self.__nodes)
         self.__nodes.append(self)
 
+    def name(self):
+        return f'n{self.id:03}'
+
     def nodes(self):
         return self.__nodes
 
@@ -204,6 +207,19 @@ class U(Node):
 
     def format(self):
         return f"U_{self.id}"
+    
+    def to_poser(self):
+        id = self.id
+        name = self.name()
+
+        node = PoserFile(var_node_template.splitlines()).root
+        node_spec = next(node.select('node'))
+        node_spec.rest = f's _{name}'
+        next(node_spec.select('name')).rest = name.title()
+        next(node_spec.select('pos')).rest = f'{890 - id * 20} {10 + id * 20}'
+        next(node_spec.select('output', 'exposedAs')).rest = f'_{name}_out'
+
+        return node
 
 
 class V(Node):
@@ -217,6 +233,19 @@ class V(Node):
 
     def format(self):
         return f"V_{self.id}"
+    
+    def to_poser(self):
+        id = self.id
+        name = self.name()
+
+        node = PoserFile(var_node_template.splitlines()).root
+        node_spec = next(node.select('node'))
+        node_spec.rest = f't _{name}'
+        next(node_spec.select('name')).rest = name.title()
+        next(node_spec.select('pos')).rest = f'{890 - id * 20} {10 + id * 20}'
+        next(node_spec.select('output', 'exposedAs')).rest = f'_{name}_out'
+
+        return node
 
 
 class MathFun(Node):
@@ -238,10 +267,10 @@ class MathFun(Node):
         in2 = format_input(self.inputs[1])
 
         return f"MathFun_{id}: {op}, inputs = ({in1}, {in2})"
-    
+
     def to_poser(self):
         id = self.id
-        name = f'n{id:03}'
+        name = self.name()
         op = self.opcode
         in1, in2 = self.inputs
 
@@ -249,12 +278,25 @@ class MathFun(Node):
         node_spec = next(node.select('node'))
         node_spec.rest = f'math_functions _{name}'
         next(node_spec.select('name')).rest = name.title()
-        next(node_spec.select('pos')).rest = f'{900 - id * 10} {id * 10}'
+        next(node_spec.select('pos')).rest = f'{890 - id * 20} {10 + id * 20}'
         next(node_spec.select('output', 'exposedAs')).rest = f'_{name}_out'
 
         math_arg, val1, val2 = list(node_spec.select('nodeInput'))
         next(math_arg.select('enumValue')).rest = f'{op.value}'
-        # TODO inputs
+        next(val1.select('exposedAs')).rest = f'_{name}_in1'
+        next(val2.select('exposedAs')).rest = f'_{name}_in2'
+
+        if isinstance(in1, Node):
+            next(val1.select('value')).rest = '1 0 100'
+            next(val1.select('node')).rest = f'_{in1.name()}:Color'
+        else:
+            next(val1.select('value')).rest = f'{in1} 0 100'
+
+        if isinstance(in2, Node):
+            next(val2.select('value')).rest = '1 0 100'
+            next(val2.select('node')).rest = f'_{in2.name()}:Color'
+        else:
+            next(val2.select('value')).rest = f'{in2} 0 100'
 
         return node
 
@@ -298,7 +340,7 @@ actor $CURRENT
                 name @name
                 pos 600 600
                 compoundOutputsPos 10 10
-                compoundInputsPos 670 10
+                compoundInputsPos 230 10
                 compoundShowPreview 1
                 showPreview 0
                 advancedInputsCollapsed 0
@@ -332,12 +374,27 @@ math_node_template = '''node math_functions @name
         name Value_1
         value 1 0 100
         exposedAs @inid1
+        node NO_NODE
         }
     nodeInput Value_2
         {
         name Value_2
         value 0 0 100
         exposedAs @inid2
+        node NO_NODE
+        }
+    }
+'''
+
+
+var_node_template = '''node @type @name
+    {
+    name @name
+    pos @x @y
+    advancedInputsCollapsed 0
+    output Color
+        {
+        exposedAs @outid
         }
     }
 '''
