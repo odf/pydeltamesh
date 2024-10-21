@@ -215,9 +215,9 @@ class U(Node):
         node = PoserFile(var_node_template.splitlines()).root
         node_spec = next(node.select('node'))
         node_spec.rest = f's _{name}'
-        next(node_spec.select('name')).rest = name.title()
+        next(node_spec.select('name')).rest = f'{name}_u'.title()
         next(node_spec.select('pos')).rest = f'{890 - id * 20} {10 + id * 20}'
-        next(node_spec.select('output', 'exposedAs')).rest = f'_{name}_out'
+        next(node_spec.select('output', 'exposedAs')).rest = f'_{name}:out'
 
         return node
 
@@ -241,9 +241,9 @@ class V(Node):
         node = PoserFile(var_node_template.splitlines()).root
         node_spec = next(node.select('node'))
         node_spec.rest = f't _{name}'
-        next(node_spec.select('name')).rest = name.title()
+        next(node_spec.select('name')).rest = f'{name}_v'.title()
         next(node_spec.select('pos')).rest = f'{890 - id * 20} {10 + id * 20}'
-        next(node_spec.select('output', 'exposedAs')).rest = f'_{name}_out'
+        next(node_spec.select('output', 'exposedAs')).rest = f'_{name}:out'
 
         return node
 
@@ -272,29 +272,30 @@ class MathFun(Node):
         id = self.id
         name = self.name()
         op = self.opcode
+        op_name = f'{op}'.replace('Op.', '')
         in1, in2 = self.inputs
 
         node = PoserFile(math_node_template.splitlines()).root
         node_spec = next(node.select('node'))
         node_spec.rest = f'math_functions _{name}'
-        next(node_spec.select('name')).rest = name.title()
+        next(node_spec.select('name')).rest = f'{name}_{op_name}'.title()
         next(node_spec.select('pos')).rest = f'{890 - id * 20} {10 + id * 20}'
-        next(node_spec.select('output', 'exposedAs')).rest = f'_{name}_out'
+        next(node_spec.select('output', 'exposedAs')).rest = f'_{name}:out'
 
         math_arg, val1, val2 = list(node_spec.select('nodeInput'))
         next(math_arg.select('enumValue')).rest = f'{op.value}'
-        next(val1.select('exposedAs')).rest = f'_{name}_in1'
-        next(val2.select('exposedAs')).rest = f'_{name}_in2'
+        next(val1.select('exposedAs')).rest = f'_{name}:in1'
+        next(val2.select('exposedAs')).rest = f'_{name}:in2'
 
         if isinstance(in1, Node):
             next(val1.select('value')).rest = '1 0 100'
-            next(val1.select('node')).rest = f'_{in1.name()}:Color'
+            next(val1.select('node')).rest = f'_{in1.name()}:out'
         else:
             next(val1.select('value')).rest = f'{in1} 0 100'
 
         if isinstance(in2, Node):
             next(val2.select('value')).rest = '1 0 100'
-            next(val2.select('node')).rest = f'_{in2.name()}:Color'
+            next(val2.select('node')).rest = f'_{in2.name()}:out'
         else:
             next(val2.select('value')).rest = f'{in2} 0 100'
 
