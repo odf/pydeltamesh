@@ -376,7 +376,10 @@ def write_poser_file(fp, name, output_nodes):
 
     tree = next(compound.select('shaderTree'))
 
-    for node in trace_network(output_nodes):
+    nodes = trace_network(output_nodes)
+    nodes.sort(key = lambda v: v.id)
+
+    for node in nodes:
         if hasattr(node, 'to_poser'):
             next(tree.select('}')).prependSibling(node.to_poser())
 
