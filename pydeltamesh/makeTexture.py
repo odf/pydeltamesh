@@ -370,7 +370,7 @@ def trace_network(outputs):
     return nodes
 
 
-def write_poser_file(fp, name, input_nodes, output_nodes):
+def write_poser_file(fp, name, output_nodes):
     source = PoserFile(file_template.splitlines())
     root = source.root
     compound = next(root.select('actor', 'material', 'shaderTree', 'node'))
@@ -379,8 +379,7 @@ def write_poser_file(fp, name, input_nodes, output_nodes):
 
     tree = next(compound.select('shaderTree'))
 
-    v = output_nodes[0]
-    for node in v.nodes():
+    for node in trace_network(output_nodes):
         if hasattr(node, 'to_poser'):
             next(tree.select('}')).prependSibling(node.to_poser())
 
@@ -482,4 +481,4 @@ if __name__ == "__main__":
     name = "texgen_test"
 
     with open("%s.mt5" % name, "w") as fp:
-        write_poser_file(fp, name, [u, v], [a])
+        write_poser_file(fp, name, [out])
