@@ -421,7 +421,7 @@ actor $CURRENT
                 name @name
                 pos 600 600
                 compoundOutputsPos 10 10
-                compoundInputsPos 230 10
+                compoundInputsPos 800 800
                 compoundShowPreview 1
                 showPreview 0
                 advancedInputsCollapsed 0
