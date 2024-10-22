@@ -248,6 +248,47 @@ class V(Node):
         return node
 
 
+class Input(Node):
+    def __init__(self, val):
+        Node.__init__(self)
+
+        self.input = val
+        self.data = val.data if isinstance(val, Node) else val
+
+    def format(self):
+        id = self.id
+        in1 = format_input(self.input)
+
+        return f"Input_{id}: input = {in1}"
+
+    def to_poser(self):
+        id = self.id
+        name = self.name()
+        op = Op.Add
+
+        node = PoserFile(math_node_template.splitlines()).root
+        node_spec = next(node.select('node'))
+        node_spec.rest = f'math_functions _{name}'
+        next(node_spec.select('name')).rest = f'{name}_Input'.title()
+        next(node_spec.select('pos')).rest = f'{890 - id * 20} {10 + id * 20}'
+        next(node_spec.select('output', 'exposedAs')).rest = f'_{name}:out'
+
+        math_arg, val1, val2 = list(node_spec.select('nodeInput'))
+        next(math_arg.select('enumValue')).rest = f'{op.value}'
+        next(val1.select('exposedAs')).rest = f'_{name}:in1'
+        next(val2.select('exposedAs')).rest = f'_{name}:in2'
+
+        if isinstance(self.input, Node):
+            next(val1.select('value')).rest = '1 0 100'
+            next(val1.select('node')).rest = f'_{self.input.name()}:out'
+        else:
+            next(val1.select('value')).rest = f'{self.input} 0 100'
+
+        next(val2.select('value')).rest = f'0 0 100'
+
+        return node
+
+
 class MathFun(Node):
     def __init__(self, opcode, val1, val2):
         Node.__init__(self)
@@ -404,8 +445,8 @@ var_node_template = '''node @type @name
 if __name__ == "__main__":
     from PIL import Image
 
-    u = U()
-    v = V()
+    u = Input(U())
+    v = Input(V())
     a = ((u - 0.5)**2 + (v - 0.5)**2).sqrt() < 0.5
 
     for node in a.nodes():
