@@ -347,6 +347,29 @@ def format_input(val):
     return f"Node {val.id}" if isinstance(val, Node) else f"Value {val}"
 
 
+def trace_network(outputs):
+    from collections import deque
+
+    dq = deque(outputs)
+    nodes = []
+    seen = set()
+
+    while len(dq):
+        node = dq.popleft()
+        if node.id in seen:
+            continue
+
+        nodes.append(node)
+        seen.add(node.id)
+
+        if hasattr(node, 'inputs'):
+            for input in node.inputs:
+                if isinstance(input, Node):
+                    dq.append(input)
+
+    return nodes
+
+
 def write_poser_file(fp, name, input_nodes, output_nodes):
     source = PoserFile(file_template.splitlines())
     root = source.root
@@ -449,12 +472,12 @@ if __name__ == "__main__":
     v = Input(V())
     a = ((u - 0.5)**2 + (v - 0.5)**2).sqrt() < 0.5
 
-    for node in a.nodes():
+    out = a
+
+    for node in trace_network([out]):
         print(node.format())
 
-    out = a.data
-
-    Image.fromarray(out * 256).show()
+    Image.fromarray(out.data * 256).show()
 
     name = "texgen_test"
 
