@@ -379,9 +379,26 @@ def write_poser_file(fp, name, output_nodes):
     nodes = trace_network(output_nodes)
     nodes.sort(key = lambda v: v.id)
 
+    input_nodes = []
+
     for node in nodes:
+        if isinstance(node, Input):
+            input_nodes.append(node)
+
         if hasattr(node, 'to_poser'):
             next(tree.select('}')).prependSibling(node.to_poser())
+
+    for node in output_nodes:
+        out = PoserFile(compound_output_template.splitlines()).root
+        next(out.select('output')).rest = f"_{node.name()}:out"
+        next(out.select('output', 'name')).rest = node.name()
+        next(compound.select('shaderTree')).prependSibling(out)
+
+    for node in input_nodes:
+        inp = PoserFile(compound_input_template.splitlines()).root
+        next(inp.select('nodeInput')).rest = f"_{node.name()}:in1"
+        next(inp.select('nodeInput', 'name')).rest = node.name()
+        next(compound.select('shaderTree')).prependSibling(inp)
 
     source.writeTo(fp)
 
@@ -464,6 +481,21 @@ var_node_template = '''node @type @name
 '''
 
 
+compound_output_template = '''output @outid
+    {
+    name @name
+    }
+'''
+
+
+compound_input_template = '''nodeInput @inid
+    {
+    name @name
+    value 1 0 100
+    }
+'''
+
+
 if __name__ == "__main__":
     from PIL import Image
 
@@ -475,6 +507,7 @@ if __name__ == "__main__":
 
     for node in trace_network([out]):
         print(node.format())
+    print()
 
     Image.fromarray(out.data * 256).show()
 
