@@ -72,17 +72,14 @@ op = {
 
 
 class Node(object):
-    __nodes = []
+    __next_id = [1]
 
     def __init__(self):
-        self.id = len(self.__nodes)
-        self.__nodes.append(self)
+        self.id = self.__next_id[0]
+        self.__next_id[0] += 1
 
     def name(self):
         return f'n{self.id:03}'
-
-    def nodes(self):
-        return self.__nodes
 
     def format(self):
         return f"Node_{self.id}"
