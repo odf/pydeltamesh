@@ -312,7 +312,12 @@ class MathFun(Node):
         self.opcode = opcode
         self.inputs = (val1, val2)
         self.data = op[opcode](v1, v2)
-        self.data[~_np.isfinite(self.data)] = 0.0
+
+        if _np.isscalar(self.data):
+            if not _np.isfinite(self.data):
+                self.data = 0.0
+        else:
+            self.data[~_np.isfinite(self.data)] = 0.0
 
     def format(self):
         id = self.id
