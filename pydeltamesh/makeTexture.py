@@ -55,7 +55,7 @@ op = {
     Op.Pow: lambda a, b: a ** b,
     Op.Exp: lambda a, _: _np.exp(a),
     Op.Log: lambda a, b: _np.log(a) / _np.log(b),
-    Op.Mod: lambda a, b: a % (_np.sign(a) * b),
+    Op.Mod: lambda a, b: a % (_np.sign(a) * abs(b)),
     Op.Abs: lambda a, _: _np.abs(a),
     Op.Sign: lambda a, _: _np.sign(a),
     Op.Min: lambda a, b: _np.minimum(a, b),
