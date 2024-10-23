@@ -12,7 +12,7 @@ def maprange(x, from_min, from_max, to_min, to_max):
 
 def threads(x, scale, gap):
     a = maprange(x * scale % 1, gap / 2, 1 - gap / 2, 0, 1)
-    return (1 - 2 * abs(a - 0.5)).bias(0.9)
+    return (a * (1 - a)).sqrt()
 
 
 u = Input(U(), "u")
