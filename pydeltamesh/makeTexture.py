@@ -94,6 +94,9 @@ class Node(object):
     def format(self):
         return f"Node_{self.id}"
 
+    def __neg__(self):
+        return MathFun(Op.Multiply, self, -1)
+
     def __add__(self, other):
         return MathFun(Op.Add, self, other)
 
