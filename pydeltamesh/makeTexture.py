@@ -74,12 +74,22 @@ op = {
 class Node(object):
     __next_id = [1]
 
-    def __init__(self):
+    def __init__(self, name=None):
         self.id = self.__next_id[0]
+        self._name = name
+
         self.__next_id[0] += 1
 
+    @property
     def name(self):
-        return f'n{self.id:03}'
+        if self._name is not None:
+            return self._name
+        else:
+            return f'n{self.id:03}'
+
+    @name.setter
+    def name(self, value):
+        self._name = value
 
     def format(self):
         return f"Node_{self.id}"
@@ -194,8 +204,8 @@ class Node(object):
 
 
 class U(Node):
-    def __init__(self, n=512):
-        Node.__init__(self)
+    def __init__(self, name=None, n=512):
+        Node.__init__(self, name)
 
         self.data = _np.outer(
             _np.full(n, 1.0),
@@ -207,7 +217,7 @@ class U(Node):
     
     def to_poser(self):
         id = self.id
-        name = self.name()
+        name = self.name
 
         node = PoserFile(var_node_template.splitlines()).root
         node_spec = next(node.select('node'))
@@ -220,8 +230,8 @@ class U(Node):
 
 
 class V(Node):
-    def __init__(self, n=512):
-        Node.__init__(self)
+    def __init__(self, name=None, n=512):
+        Node.__init__(self, name)
 
         self.data = _np.outer(
             _np.flip(_np.arange(0.0, 1.0, 1.0 / n)),
@@ -233,7 +243,7 @@ class V(Node):
     
     def to_poser(self):
         id = self.id
-        name = self.name()
+        name = self.name
 
         node = PoserFile(var_node_template.splitlines()).root
         node_spec = next(node.select('node'))
@@ -246,8 +256,8 @@ class V(Node):
 
 
 class Input(Node):
-    def __init__(self, val):
-        Node.__init__(self)
+    def __init__(self, val, name=None):
+        Node.__init__(self, name)
 
         self.input = val
         self.data = val.data if isinstance(val, Node) else val
@@ -260,7 +270,7 @@ class Input(Node):
 
     def to_poser(self):
         id = self.id
-        name = self.name()
+        name = self.name
         op = Op.Add
 
         node = PoserFile(math_node_template.splitlines()).root
@@ -277,7 +287,7 @@ class Input(Node):
 
         if isinstance(self.input, Node):
             next(val1.select('value')).rest = '1 0 100'
-            next(val1.select('node')).rest = f'_{self.input.name()}:out'
+            next(val1.select('node')).rest = f'_{self.input.name}:out'
         else:
             next(val1.select('value')).rest = f'{self.input} 0 100'
 
@@ -287,8 +297,8 @@ class Input(Node):
 
 
 class MathFun(Node):
-    def __init__(self, opcode, val1, val2):
-        Node.__init__(self)
+    def __init__(self, opcode, val1, val2, name=None):
+        Node.__init__(self, name)
 
         v1 = val1.data if isinstance(val1, Node) else val1
         v2 = val2.data if isinstance(val2, Node) else val2
@@ -308,7 +318,7 @@ class MathFun(Node):
 
     def to_poser(self):
         id = self.id
-        name = self.name()
+        name = self.name
         op = self.opcode
         op_name = f'{op}'.replace('Op.', '')
         in1, in2 = self.inputs
@@ -327,13 +337,13 @@ class MathFun(Node):
 
         if isinstance(in1, Node):
             next(val1.select('value')).rest = '1 0 100'
-            next(val1.select('node')).rest = f'_{in1.name()}:out'
+            next(val1.select('node')).rest = f'_{in1.name}:out'
         else:
             next(val1.select('value')).rest = f'{in1} 0 100'
 
         if isinstance(in2, Node):
             next(val2.select('value')).rest = '1 0 100'
-            next(val2.select('node')).rest = f'_{in2.name()}:out'
+            next(val2.select('node')).rest = f'_{in2.name}:out'
         else:
             next(val2.select('value')).rest = f'{in2} 0 100'
 
@@ -390,14 +400,14 @@ def write_poser_file(fp, name, output_nodes):
 
     for node in output_nodes:
         out = PoserFile(compound_output_template.splitlines()).root
-        next(out.select('output')).rest = f"_{node.name()}:out"
-        next(out.select('output', 'name')).rest = node.name()
+        next(out.select('output')).rest = f"_{node.name}:out"
+        next(out.select('output', 'name')).rest = node.name
         next(compound.select('shaderTree')).prependSibling(out)
 
     for node in input_nodes:
         inp = PoserFile(compound_input_template.splitlines()).root
-        next(inp.select('nodeInput')).rest = f"_{node.name()}:in1"
-        next(inp.select('nodeInput', 'name')).rest = node.name()
+        next(inp.select('nodeInput')).rest = f"_{node.name}:in1"
+        next(inp.select('nodeInput', 'name')).rest = node.name
         next(compound.select('shaderTree')).prependSibling(inp)
 
     source.writeTo(fp)
@@ -499,11 +509,12 @@ compound_input_template = '''nodeInput @inid
 if __name__ == "__main__":
     from PIL import Image
 
-    u = Input(U())
-    v = Input(V())
+    u = Input(U(), "u")
+    v = Input(V(), "v")
     a = ((u - 0.5)**2 + (v - 0.5)**2).sqrt() < 0.5
 
     out = a
+    out.name = "mask"
 
     for node in trace_network([out]):
         print(node.format())
