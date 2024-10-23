@@ -209,7 +209,7 @@ class U(Node):
 
         self.data = _np.outer(
             _np.full(n, 1.0),
-            _np.arange(0.0, 1.0, 1.0 / n)
+            _np.arange(0.5 / n, 1.0, 1.0 / n)
         )
 
     def format(self):
@@ -234,7 +234,7 @@ class V(Node):
         Node.__init__(self, name)
 
         self.data = _np.outer(
-            _np.flip(_np.arange(0.0, 1.0, 1.0 / n)),
+            _np.flip(_np.arange(0.5 / n, 1.0, 1.0 / n)),
             _np.full(n, 1.0)
         )
 
