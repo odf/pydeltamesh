@@ -94,8 +94,14 @@ class Node(object):
     def format(self):
         return f"Node_{self.id}"
 
+    def __abs__(self):
+        return MathFun(Op.Abs, self, 0)
+
     def __neg__(self):
         return MathFun(Op.Multiply, self, -1)
+
+    def __round__(self):
+        return MathFun(Op.Round, self, 0)
 
     def __add__(self, other):
         return MathFun(Op.Add, self, other)
@@ -192,9 +198,6 @@ class Node(object):
 
     def floor(self):
         return MathFun(Op.Floor, self, 0)
-
-    def round(self):
-        return MathFun(Op.Round, self, 0)
 
     def smoothstep(self):
         return MathFun(Op.Smoothstep, self, 0)
