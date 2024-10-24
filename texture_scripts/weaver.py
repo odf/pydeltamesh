@@ -24,23 +24,31 @@ down_count = Input(2, "down_count")
 shift = Input(2, "shift")
 
 warp = threads(u, scale, gap)
-warp.name = "warp"
-
 weft = threads(v, scale, gap)
-weft.name = "weft"
+
+warp_mask_raw = warp > 0
+weft_mask_raw = weft > 0
+
+opacity = warp_mask_raw.max(weft_mask_raw)
+opacity.name = "opacity"
 
 i_warp = (u * scale).floor()
 i_weft = (v * scale).floor()
 period = up_count + down_count
 
 weft_is_up = rem(i_warp - shift * i_weft, period) < up_count
-weft_is_up.name = "weft_is_up"
 
-weave = weft * weft_is_up + warp * (1 - weft_is_up)
-weave.name = "weave"
+warp_mask = warp_mask_raw * (weft_is_up * (1 - weft_mask_raw) + (1 - weft_is_up))
+warp_mask.name = "warp_mask"
+
+weft_mask = weft_mask_raw - warp_mask
+weft_mask.name = "weft_mask"
+
+bump = weft * weft_is_up + warp * (1 - weft_is_up)
+bump.name = "bump"
 
 with open("weaver_mktx.mt5", "w") as fp:
-    write_poser_file(fp, "weaver", [warp, weft, weft_is_up, weave])
+    write_poser_file(fp, "weaver", [opacity, bump, warp_mask, weft_mask])
 
 from PIL import Image
-Image.fromarray(weave.data * 256).show()
+Image.fromarray(weft_mask.data * 256).show()
