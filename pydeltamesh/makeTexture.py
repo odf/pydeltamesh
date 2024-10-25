@@ -100,6 +100,15 @@ class Node(object):
     def __neg__(self):
         return MathFun(Op.Multiply, self, -1)
 
+    def __invert__(self):
+        return 1 - self
+
+    def __or__(self, other):
+        return self.max(other)
+
+    def __and__(self, other):
+        return self.min(other)
+
     def __round__(self):
         return MathFun(Op.Round, self, 0)
 
@@ -146,19 +155,16 @@ class Node(object):
         return MathFun(Op.Step, other, self)
 
     def __eq__(self, other):
-        return (self <= other) * (self >= other)
-
-    def inv(self):
-        return MathFun(Op.Subtract, 1, self)
+        return (self <= other) & (self >= other)
 
     def __lt__(self, other):
-        return (self >= other).inv()
+        return ~(self >= other)
 
     def __gt__(self, other):
-        return (self <= other).inv()
+        return ~(self <= other)
 
     def __ne__(self, other):
-        return (self == other).inv()
+        return ~(self == other)
 
     def sin(self):
         return MathFun(Op.Sin, self, 0)

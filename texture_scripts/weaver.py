@@ -38,13 +38,13 @@ period = up_count + down_count
 
 weft_is_up = rem(i_warp - shift * i_weft, period) < up_count
 
-warp_mask = warp_mask_raw * (weft_is_up * (1 - weft_mask_raw)).max(1 - weft_is_up)
+warp_mask = warp_mask_raw & ~(weft_mask_raw & weft_is_up)
 warp_mask.name = "warp_mask"
 
-weft_mask = weft_mask_raw.min(1 - warp_mask)
+weft_mask = weft_mask_raw & ~warp_mask
 weft_mask.name = "weft_mask"
 
-bump = weft * weft_is_up + warp * (1 - weft_is_up)
+bump = weft * weft_is_up + warp * ~weft_is_up
 bump.name = "bump"
 
 thread_index = 2 * (warp_mask * (i_warp + 0.5) + weft_mask * (i_weft + 1))
@@ -56,4 +56,4 @@ with open("weaver_mktx.mt5", "w") as fp:
     )
 
 from PIL import Image
-Image.fromarray((thread_index % 3).data * 256).show()
+Image.fromarray(warp_mask.data * 256).show()
