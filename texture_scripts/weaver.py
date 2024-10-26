@@ -18,7 +18,7 @@ def threads(x, scale, gap):
 u = Input(U(), "u")
 v = Input(V(), "v")
 scale = Input(10, "scale")
-gap = Input(0.2, "gap")
+gap = Input(0.4, "gap")
 up_count = Input(3, "up_count")
 down_count = Input(2, "down_count")
 shift = Input(2, "shift")
@@ -44,7 +44,10 @@ warp_mask.name = "warp_mask"
 weft_mask = weft_mask_raw & ~warp_mask
 weft_mask.name = "weft_mask"
 
-bump = weft * weft_is_up + warp * ~weft_is_up
+weft_height = 0.5 * weft_is_up
+warp_height = 0.5 * ~weft_is_up
+
+bump = (weft + weft_height) * weft_mask + (warp + warp_height) * warp_mask
 bump.name = "bump"
 
 thread_index = 2 * (warp_mask * (i_warp + 0.5) + weft_mask * (i_weft + 1))
@@ -56,4 +59,4 @@ with open("weaver_mktx.mt5", "w") as fp:
     )
 
 from PIL import Image
-Image.fromarray(warp_mask.data * 256).show()
+Image.fromarray(bump.data * 256).show()
