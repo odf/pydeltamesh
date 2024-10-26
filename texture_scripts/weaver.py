@@ -44,8 +44,20 @@ warp_mask.name = "warp_mask"
 weft_mask = weft_mask_raw & ~warp_mask
 weft_mask.name = "weft_mask"
 
-weft_height = 0.5 * weft_is_up
-warp_height = 0.5 * ~weft_is_up
+weft_pos = rem(u * scale - shift * i_weft, period)
+weft_height = (
+    0.5 * weft_is_up
+    + 0.5 * (weft_pos - 0.5) * (weft_pos < 0.5)
+    + 0.5 * (weft_pos + 0.5 - period) * (weft_pos + 0.5 > period)
+    - 0.5 * (weft_pos + 0.5 - up_count)
+        * (weft_pos + 0.5 > up_count)
+        * (weft_pos < up_count)
+    - 0.5 * (weft_pos - 0.5 - up_count)
+        * (weft_pos > up_count)
+        * (weft_pos - 0.5 < up_count)
+).gain(0.3).smoothstep()
+
+warp_height = 0 #0.5 * ~weft_is_up
 
 bump = (weft + weft_height) * weft_mask + (warp + warp_height) * warp_mask
 bump.name = "bump"
