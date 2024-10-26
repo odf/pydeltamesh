@@ -36,9 +36,11 @@ i_warp = (u * scale).floor()
 i_weft = (v * scale).floor()
 period = up_count + down_count
 
-weft_is_up = rem(i_warp - shift * i_weft, period) < up_count
+next_weft_is_up = rem(i_warp - shift * (i_weft + 1), period) < up_count
+this_weft_is_up = rem(i_warp - shift * i_weft, period) < up_count
+previous_weft_is_up = rem(i_warp - shift * (i_weft - 1), period) < up_count
 
-warp_mask = warp_mask_raw & ~(weft_mask_raw & weft_is_up)
+warp_mask = warp_mask_raw & ~(weft_mask_raw & this_weft_is_up)
 warp_mask.name = "warp_mask"
 
 weft_mask = weft_mask_raw & ~warp_mask
@@ -46,7 +48,7 @@ weft_mask.name = "weft_mask"
 
 weft_pos = rem(u * scale - shift * i_weft, period)
 weft_height = 0.5 * (
-    weft_is_up
+    this_weft_is_up
     + (weft_pos - 0.5) * (weft_pos < 0.5)
     + (weft_pos + 0.5 - period) * (weft_pos + 0.5 > period)
     - (weft_pos + 0.5 - up_count)
@@ -57,7 +59,16 @@ weft_height = 0.5 * (
         * (weft_pos - 0.5 < up_count)
 ).smoothstep()
 
-warp_height = 0 #0.5 * ~weft_is_up
+warp_pos = rem(v * scale, 1)
+warp_height = 0.5 * (
+    ~this_weft_is_up
+    + (warp_pos - 0.5) * (
+        ((warp_pos > 0.5) & this_weft_is_up & ~next_weft_is_up)
+        + ((warp_pos < 0.5) & ~this_weft_is_up & previous_weft_is_up)
+        - ((warp_pos > 0.5) & ~this_weft_is_up & next_weft_is_up)
+        - ((warp_pos < 0.5) & this_weft_is_up & ~previous_weft_is_up)
+    )
+).smoothstep()
 
 bump = (weft + weft_height) * weft_mask + (warp + warp_height) * warp_mask
 bump.name = "bump"
