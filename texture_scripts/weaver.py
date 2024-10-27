@@ -49,14 +49,10 @@ weft_mask.name = "weft_mask"
 weft_pos = rem(u * scale - shift * i_weft, period)
 weft_height = 0.5 * (
     this_weft_is_up
-    + (weft_pos - 0.5) * (weft_pos < 0.5)
-    + (weft_pos + 0.5 - period) * (weft_pos + 0.5 > period)
-    - (weft_pos + 0.5 - up_count)
-        * (weft_pos + 0.5 > up_count)
-        * (weft_pos < up_count)
-    - (weft_pos - 0.5 - up_count)
-        * (weft_pos > up_count)
-        * (weft_pos - 0.5 < up_count)
+    - (0.5 - weft_pos).clamp()
+    + (weft_pos + 0.5 - period).clamp()
+    - (weft_pos + 0.5 - up_count).clamp() * (weft_pos < up_count)
+    + (up_count + 0.5 - weft_pos).clamp() * (weft_pos > up_count)
 ).smoothstep()
 
 warp_pos = rem(v * scale, 1)
