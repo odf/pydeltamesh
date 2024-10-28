@@ -32,13 +32,17 @@ weft_mask_raw = weft > 0
 opacity = warp_mask_raw.max(weft_mask_raw)
 opacity.name = "opacity"
 
-i_warp = (u * scale).floor()
-i_weft = (v * scale).floor()
+idx_warp = (u * scale).floor()
+idx_warp.name = "warp_thread_index"
+
+idx_weft = (v * scale).floor()
+idx_weft.name = "weft_thread_index"
+
 period = up_count + down_count
 
-next_weft_is_up = rem(i_warp - shift * (i_weft + 1), period) < up_count
-this_weft_is_up = rem(i_warp - shift * i_weft, period) < up_count
-previous_weft_is_up = rem(i_warp - shift * (i_weft - 1), period) < up_count
+next_weft_is_up = rem(idx_warp - shift * (idx_weft + 1), period) < up_count
+this_weft_is_up = rem(idx_warp - shift * idx_weft, period) < up_count
+previous_weft_is_up = rem(idx_warp - shift * (idx_weft - 1), period) < up_count
 
 warp_mask = warp_mask_raw & ~(weft_mask_raw & this_weft_is_up)
 warp_mask.name = "warp_mask"
@@ -46,7 +50,7 @@ warp_mask.name = "warp_mask"
 weft_mask = weft_mask_raw & ~warp_mask
 weft_mask.name = "weft_mask"
 
-weft_pos = rem(u * scale - shift * i_weft, period)
+weft_pos = rem(u * scale - shift * idx_weft, period)
 weft_height = 0.5 * (
     this_weft_is_up
     - (0.5 - weft_pos).clamp()
@@ -69,13 +73,23 @@ warp_height = 0.5 * (
 bump = (weft + weft_height) * weft_mask + (warp + warp_height) * warp_mask
 bump.name = "bump"
 
-thread_index = 2 * (warp_mask * (i_warp + 0.5) + weft_mask * (i_weft + 1))
-thread_index.name = "thread_index"
+thread_u = u * weft_mask + v * warp_mask
+thread_u.name = "thread_u"
+
+thread_v = v * weft_mask + (1 - u) * warp_mask
+thread_v.name = "thread_v"
 
 with open("weaver_mktx.mt5", "w") as fp:
     write_poser_file(
-        fp, "weaver", [opacity, bump, warp_mask, weft_mask, thread_index]
+        fp,
+        name="weaver",
+        output_nodes=[
+            opacity, bump,
+            warp_mask, weft_mask,
+            idx_warp, idx_weft,
+            thread_u, thread_v
+        ]
     )
 
 from PIL import Image
-Image.fromarray(bump.data * 256).show()
+Image.fromarray(thread_v.data * 256).show()
