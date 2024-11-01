@@ -87,6 +87,17 @@ class Node(object):
         else:
             return f'n{self.id:03}'
 
+    @property
+    def extension(self):
+        return "node"
+
+    @property
+    def title(self):
+        if self._name is not None:
+            return self._name
+        else:
+            return f'{self.name}_{self.extension}'.title()
+
     @name.setter
     def name(self, value):
         self._name = value
@@ -224,6 +235,9 @@ class U(Node):
             _np.arange(0.5 / n, 1.0, 1.0 / n)
         )
 
+    def extension(self):
+        return "u"
+
     def format(self):
         return f"U_{self.id}"
     
@@ -234,7 +248,7 @@ class U(Node):
         node = PoserFile(var_node_template.splitlines()).root
         node_spec = next(node.select('node'))
         node_spec.rest = f's _{name}'
-        next(node_spec.select('name')).rest = f'{name}_u'.title()
+        next(node_spec.select('name')).rest = self.title
         next(node_spec.select('pos')).rest = f'{890 - id * 20} {10 + id * 20}'
         next(node_spec.select('output', 'exposedAs')).rest = f'_{name}:out'
 
@@ -250,6 +264,9 @@ class V(Node):
             _np.full(n, 1.0)
         )
 
+    def extension(self):
+        return "v"
+
     def format(self):
         return f"V_{self.id}"
     
@@ -260,7 +277,7 @@ class V(Node):
         node = PoserFile(var_node_template.splitlines()).root
         node_spec = next(node.select('node'))
         node_spec.rest = f't _{name}'
-        next(node_spec.select('name')).rest = f'{name}_v'.title()
+        next(node_spec.select('name')).rest = self.title
         next(node_spec.select('pos')).rest = f'{890 - id * 20} {10 + id * 20}'
         next(node_spec.select('output', 'exposedAs')).rest = f'_{name}:out'
 
@@ -273,6 +290,9 @@ class Input(Node):
 
         self.input = val
         self.data = val.data if isinstance(val, Node) else val
+
+    def extension(self):
+        return "input"
 
     def format(self):
         id = self.id
@@ -288,7 +308,7 @@ class Input(Node):
         node = PoserFile(math_node_template.splitlines()).root
         node_spec = next(node.select('node'))
         node_spec.rest = f'math_functions _{name}'
-        next(node_spec.select('name')).rest = f'{name}_Input'.title()
+        next(node_spec.select('name')).rest = self.title
         next(node_spec.select('pos')).rest = f'{890 - id * 20} {10 + id * 20}'
         next(node_spec.select('output', 'exposedAs')).rest = f'_{name}:out'
 
@@ -325,6 +345,9 @@ class MathFun(Node):
         else:
             self.data[~_np.isfinite(self.data)] = 0.0
 
+    def extension(self):
+        return f'{op}'.replace('Op.', '')
+
     def format(self):
         id = self.id
         op = self.opcode
@@ -337,13 +360,12 @@ class MathFun(Node):
         id = self.id
         name = self.name
         op = self.opcode
-        op_name = f'{op}'.replace('Op.', '')
         in1, in2 = self.inputs
 
         node = PoserFile(math_node_template.splitlines()).root
         node_spec = next(node.select('node'))
         node_spec.rest = f'math_functions _{name}'
-        next(node_spec.select('name')).rest = f'{name}_{op_name}'.title()
+        next(node_spec.select('name')).rest = self.title
         next(node_spec.select('pos')).rest = f'{890 - id * 20} {10 + id * 20}'
         next(node_spec.select('output', 'exposedAs')).rest = f'_{name}:out'
 
