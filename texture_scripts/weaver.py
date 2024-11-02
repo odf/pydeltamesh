@@ -15,9 +15,7 @@ def maprange(x, from_min, from_max, to_min, to_max):
     return (x - from_min) * t + to_min
 
 
-def threads(x, scale, gap, gap_variation):
-    thread_nr = (x * scale).floor()
-    gap = gap + gap_variation * (random(thread_nr) - 0.5)
+def threads(x, scale, gap):
     a = maprange(x * scale % 1, gap / 2, 1 - gap / 2, 0, 1)
     return (a * (1 - a)).sqrt() * (1 - gap)
 
@@ -25,14 +23,14 @@ def threads(x, scale, gap, gap_variation):
 u = Input(U(), "u")
 v = Input(V(), "v")
 scale = Input(20, "scale")
-gap = Input(0.4, "gap")
-gap_variation = Input(0.2, "gap_variation")
+gap_warp = Input(0.3, "gap_warp")
+gap_weft = Input(0.3, "gap_weft")
 up_count = Input(1, "up_count")
 down_count = Input(1, "down_count")
 shift = Input(1, "shift")
 
-warp = threads(u, scale, gap, gap_variation)
-weft = threads(v + 1, scale, gap, gap_variation)
+warp = threads(u, scale, gap_warp)
+weft = threads(v + 1, scale, gap_weft)
 
 warp_mask_raw = warp > 0
 weft_mask_raw = weft > 0
