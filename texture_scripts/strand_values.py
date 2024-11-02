@@ -7,16 +7,15 @@ def random(x):
     return t - t.floor()
 
 
-def maprange(x, from_min, from_max, to_min, to_max):
-    t = (to_max - to_min) / (from_max - from_min)
-    return (x - from_min) * t + to_min
+def rnd(x, lo, hi):
+    return random(x) * (hi - lo) + lo
 
 
 def make_val(x, y, scale):
     i = (x * scale).floor()
-    amplitude = maprange(random(i), 0, 1, 0.2, 0.5)
-    wavelength = maprange(random(i + scale), 0, 1, 0.2, 0.4)
-    offset = maprange(random(i + 2 * scale), 0, 1, 0, wavelength / 2)
+    amplitude = rnd(i, 0.2, 0.5)
+    wavelength = rnd(i + scale, 0.2, 0.4)
+    offset = random(i + 2 * scale)
 
     return 0.5 + amplitude * (2 * pi * (y + offset) / wavelength).sin()
 
