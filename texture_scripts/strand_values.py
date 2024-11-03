@@ -13,16 +13,27 @@ def rnd(x, lo, hi):
 
 def make_val(x, y, scale):
     i = (x * scale).floor()
-    amplitude = rnd(i, 0.2, 0.5)
-    wavelength = rnd(i + scale, 0.2, 0.4)
-    offset = random(i + 2 * scale)
+    a1 = random(i)
+    a2 = random(i + scale)
+    a3 = random(i + 2 * scale)
+    a4 = random(i + 3 * scale)
+    a5 = random(i + 4 * scale)
 
-    return 0.5 + amplitude * (2 * pi * (y + offset) / wavelength).sin()
+    offset = random(i + 5 * scale)
+
+    arg = 2 * pi * (y + offset)
+    return (
+        a1 * arg.sin()
+        + a2 * (arg * 2).sin()
+        + a3 * (arg * 3).sin()
+        + a4 * (arg * 4).sin()
+        + a5 * (arg * 5).sin()
+    ) / 10 + 0.5
 
 
 u = Input(U(), "u")
 v = Input(V(), "v")
-scale = Input(20, "scale")
+scale = Input(720, "scale")
 
 warp_val = make_val(u, v, scale)
 warp_val.name = "warp_value"
