@@ -36,15 +36,15 @@ v = Input(V(), "v")
 scale = Input(720, "scale")
 
 warp_val = make_val(u, v, scale)
-warp_val.name = "warp_value"
+warp_val.name = "warp_variation"
 
 weft_val = make_val(v + 1, u, scale)
-weft_val.name = "weft_value"
+weft_val.name = "weft_variation"
 
-with open("strand_values_mktx.mt5", "w") as fp:
+with open("thread_variations_mktx.mt5", "w") as fp:
     write_poser_file(
         fp,
-        name="strand_values",
+        name="thread_variations",
         output_nodes=[warp_val, weft_val]
     )
 
