@@ -76,7 +76,8 @@ warp_height = 0.5 * (
     )
 ).smoothstep()
 
-bump = (weft + weft_height) * weft_mask + (warp + warp_height) * warp_mask
+bump_raw = (weft + weft_height) * weft_mask + (warp + warp_height) * warp_mask
+bump = bump_raw / scale
 bump.name = "bump"
 
 thread_u = u * weft_mask + v * warp_mask
@@ -98,4 +99,4 @@ with open("weaver_mktx.mt5", "w") as fp:
     )
 
 from PIL import Image
-Image.fromarray(bump.data * 256).show()
+Image.fromarray(bump_raw.data * 256).show()
