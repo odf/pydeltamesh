@@ -7,10 +7,6 @@ def random(x):
     return t - t.floor()
 
 
-def rnd(x, lo, hi):
-    return random(x) * (hi - lo) + lo
-
-
 def make_val(x, y, scale):
     i = (x * scale).floor()
     a1 = random(i)
@@ -34,11 +30,13 @@ def make_val(x, y, scale):
 u = Input(U(), "u")
 v = Input(V(), "v")
 scale = Input(720, "scale")
+lo = Input(0, "min")
+hi = Input(1, "max")
 
-warp_val = make_val(u, v, scale)
+warp_val = make_val(u, v, scale) * (hi - lo) + lo
 warp_val.name = "warp_variation"
 
-weft_val = make_val(v + 1, u, scale)
+weft_val = make_val(v + 1, u, scale) * (hi - lo) + lo
 weft_val.name = "weft_variation"
 
 with open("thread_variations_mktx.mt5", "w") as fp:
