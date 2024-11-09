@@ -1,8 +1,8 @@
 from pydeltamesh.makeTexture import *
 
-thread_index = Input((U() * 208).floor(), "thread_index")
+thread_index = Input((U() * 256).floor(), "thread_index")
 
-counts = [2, 24, 24, 2, 0, 0, 0, 0]
+counts = [2, 6, 14, 4, 14, 2, 4, 2]
 
 count_inputs = [
     Input(c, f"count_{i}") for i, c in enumerate(counts)
@@ -14,7 +14,8 @@ for c in count_inputs:
 
 length = starts.pop()
 
-index = ((thread_index + length) % (2 * length) + 0.5 - length).abs() - 0.5
+t = thread_index % (2 * length)
+index = t * (t < length) + (2 * length - 1 - t) * (t >= length)
 
 out = 0
 for i, s in enumerate(starts):
@@ -27,4 +28,4 @@ with open("color_index_mktx.mt5", "w") as fp:
     write_poser_file(fp, name="color_index", output_nodes=[out])
 
 from PIL import Image
-Image.fromarray(out.data * 50).show()
+Image.fromarray(out.data * 32).show()
