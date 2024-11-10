@@ -38,17 +38,14 @@ weft_mask_raw = weft > 0
 opacity = warp_mask_raw | weft_mask_raw
 opacity.name = "opacity"
 
-idx_warp = (u * scale).floor()
-idx_warp.name = "warp_thread_index"
-
-idx_weft = (v * scale).floor()
-idx_weft.name = "weft_thread_index"
+idx_warp_raw = (u * scale).floor()
+idx_weft_raw = (v * scale).floor()
 
 period = up_count + down_count
 
-next_weft_is_up = rem(idx_warp - shift * (idx_weft + 1), period) < up_count
-this_weft_is_up = rem(idx_warp - shift * idx_weft, period) < up_count
-previous_weft_is_up = rem(idx_warp - shift * (idx_weft - 1), period) < up_count
+next_weft_is_up = rem(idx_warp_raw - shift * (idx_weft_raw + 1), period) < up_count
+this_weft_is_up = rem(idx_warp_raw - shift * idx_weft_raw, period) < up_count
+previous_weft_is_up = rem(idx_warp_raw - shift * (idx_weft_raw - 1), period) < up_count
 
 warp_mask = warp_mask_raw & ~(weft_mask_raw & this_weft_is_up)
 warp_mask.name = "warp_mask"
@@ -56,7 +53,7 @@ warp_mask.name = "warp_mask"
 weft_mask = weft_mask_raw & ~warp_mask
 weft_mask.name = "weft_mask"
 
-weft_pos = rem(u * scale - shift * idx_weft, period)
+weft_pos = rem(u * scale - shift * idx_weft_raw, period)
 weft_height = 0.5 * (
     this_weft_is_up
     - (0.5 - weft_pos).clamp()
@@ -79,6 +76,12 @@ warp_height = 0.5 * (
 bump_raw = (weft + weft_height) * weft_mask + (warp + warp_height) * warp_mask
 bump = bump_raw / scale
 bump.name = "bump"
+
+idx_warp = idx_warp_raw * warp_mask
+idx_warp.name = "warp_thread_index"
+
+idx_weft = idx_weft_raw * weft_mask
+idx_weft.name = "weft_thread_index"
 
 thread_u = u * weft_mask + v * warp_mask
 thread_u.name = "thread_u"
