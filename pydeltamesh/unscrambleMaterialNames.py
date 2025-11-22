@@ -55,7 +55,9 @@ def unscramble(dataIn):
         groupOut, matOut = f.material.split(":")
         facesOut.append(f._replace(group=groupOut, material=matOut))
 
-    return dataIn._replace(faces=facesOut)
+    matsOut = {k: v for k, v in dataIn.materials.items() if not ':' in k}
+
+    return dataIn._replace(faces=facesOut, materials=matsOut)
 
 
 if __name__ == '__main__':
